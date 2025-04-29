@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+requests
+mistralai
+cohere
+openai
