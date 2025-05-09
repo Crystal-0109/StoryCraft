@@ -7,3 +7,5 @@ openai
 openai
 dotenv
 pydantic
+python-multipart
+PyPDF2

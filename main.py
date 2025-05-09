@@ -8,6 +8,11 @@ from pydantic import BaseModel
 import cohere
 from fastapi import Body
 from fastapi import Request
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import PlainTextResponse
+from fastapi.middleware.cors import CORSMiddleware
+from PyPDF2 import PdfReader
+import tempfile
 
 load_dotenv()
 
@@ -144,7 +149,7 @@ async def summarize(content: TextInput):
     payload = {
         "agent_id": AGENT_ID_SUMMARY,
         "messages": [
-            {"role": "user", "content": f"다음 글을 간결하게 요약해줘:\n\n{content.content}"}
+            {"role": "user", "content": f"다음 글을 최대한 간결하게 요약해줘. 대신 핵심내용은 포함해줘:\n\n{content.content}"}
         ]
     }
     response = requests.post(
@@ -232,3 +237,24 @@ async def cohere_honorific(content: TextInput):
     full_text = response.message.content[0].text
 
     return {"result": full_text}
+
+@app.post("/pdfScan")
+async def upload_pdf(pdf: UploadFile = File(...)):
+    # 업로드된 PDF를 임시 파일로 저장
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
+        contents = await pdf.read()
+        temp_pdf.write(contents)
+        temp_pdf_path = temp_pdf.name
+
+    # PDF 파일에서 텍스트 추출
+    try:
+        reader = PdfReader(temp_pdf_path)
+        extracted_text = ""
+        for page in reader.pages:
+            extracted_text += page.extract_text() or ""
+    except Exception as e:
+        return {"error": f"PDF 처리 중 오류 발생: {str(e)}"}
+
+    testText = "test"  # 테스트 코드
+
+    return {"filename": pdf.filename, "text": extracted_text.strip(), "testText": testText}

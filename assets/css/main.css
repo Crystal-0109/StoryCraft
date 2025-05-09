@@ -27,6 +27,28 @@ td {
     color: red;
     font-weight: bold;
 }
+
+.highlight-space {
+    border-bottom: 2px dotted red;
+}
+
+.highlight-particle {
+    border-bottom: 2px dotted green;
+}
+
+.highlight-general {
+    background-color: #fff3b0;
+    border-radius: 4px;
+    padding: 0 2px;
+    cursor: help;
+}
+.style-highlight {
+    background-color: #fff3b0;
+    border-radius: 4px;
+    padding: 0 2px;
+    cursor: help;
+}
+
 #grammarTable td.right {
     white-space: pre-wrap;
 }

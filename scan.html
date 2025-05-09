@@ -72,13 +72,15 @@
                         <li><a href="index.html#about">About</a></li>
                         <li><a href="index.html#services">Services</a></li>
                         <li><a href="search.html">Search</a></li>
+                        <li><a href="rewrite.html">Rewrite</a></li>
                         <li>
-                            <a href="rewrite.html" class="active">Rewrite</a>
+                            <a href="change-style.html">Style</a>
                         </li>
-                        <li><a href="change-style.html">Style</a></li>
-                        <li><a href="grammar.html">Grammar</a></li>
+                        <li>
+                            <a href="grammar.html">Grammar</a>
+                        </li>
                         <li><a href="honorific.html">Honorific</a></li>
-                        <li><a href="scan.html">Scan</a></li>
+                        <li><a href="scan.html" class="active">Scan</a></li>
                         <li><a href="index.html#faq">FAQ</a></li>
                     </ul>
                     <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
@@ -87,45 +89,43 @@
         </header>
 
         <main class="main">
-            <!-- Portfolio Section -->
-            <section id="portfolio" class="portfolio section">
+            <!-- Pricing Section -->
+            <section id="pricing" class="pricing section">
                 <!-- Section Title -->
                 <div class="container section-title" data-aos="fade-up">
-                    <h2>Rewrite</h2>
+                    <h2>PDF Scan</h2>
                     <div class="container">
-                        <textarea
-                            id="userInput"
-                            placeholder="여기에 글을 입력하세요..."
-                            class="textarea_SC"
-                        ></textarea>
-                        <div style="margin-top: 10px">
-                            <button id="rewriteBtn" class="resultBtn_SC">
-                                <span>첨삭하기 ✨</span>
+                        <form id="uploadForm">
+                            <input
+                                type="file"
+                                id="pdfFile"
+                                name="pdf"
+                                accept="application/pdf"
+                            />
+                            <button id="pdfScanBtn" type="submit">
+                                업로드
                             </button>
-                            <button
-                                id="summaryBtn"
-                                onclick="summarizeText()"
-                                class="resultBtn_SC"
-                            >
-                                <span>요약하기 ✨</span>
-                            </button>
-                            <button
-                                id="expandBtn"
-                                onclick="expandText()"
-                                class="resultBtn_SC"
-                            >
-                                <span>확장하기 🚀</span>
-                            </button>
-                        </div>
-                        <div id="resultArea" class="resultArea_SC">
-                            <div id="rewriteResults"></div>
-                            <!-- 요약/확장 결과용 -->
+                        </form>
+                        <div
+                            id="resultArea"
+                            class="resultArea_SC"
+                            style="text-align: left"
+                        >
+                            <table id="grammarTable">
+                                <thead>
+                                    <tr>
+                                        <th>원문&교정문</th>
+                                        <th>관련 규범&설명</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
                 <!-- End Section Title -->
+                <!-- /Pricing Section -->
             </section>
-            <!-- /Portfolio Section -->
         </main>
 
         <footer id="footer" class="footer">
@@ -218,7 +218,9 @@
                         <ul>
                             <li><a href="search.html">Search</a></li>
                             <li><a href="rewrite.html">Rewrite</a></li>
-                            <li><a href="change-style.html">Style</a></li>
+                            <li>
+                                <a href="change-style.html">Style</a>
+                            </li>
                             <li><a href="grammar.html">Grammar</a></li>
                             <li><a href="honorific.html">Honorific</a></li>
                             <li><a href="scan.html">Scan</a></li>
@@ -230,7 +232,7 @@
             <div class="container copyright text-center mt-4">
                 <p>
                     © <span>Copyright</span>
-                    <strong class="px-1 sitename">StoryCraft</strong>
+                    <strong class="px-1 sitename">Bikin</strong>
                     <span>All Rights Reserved</span>
                 </p>
                 <div class="credits">
