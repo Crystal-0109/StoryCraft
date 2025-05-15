@@ -59,6 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfScanInformal();
         });
     }
+    const pdfScanTranslateBtn = document.getElementById('pdfScanTranslateBtn');
+    if (pdfScanTranslateBtn) {
+        pdfScanTranslateBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            pdfScanTranslate();
+        }); 
+    }
+
 });
 
 async function searchExample() {
@@ -79,6 +87,8 @@ let currentInput = '';
 async function loadMoreExamples() {
     const userInput = document.getElementById('userInput').value.trim();
     const container = document.getElementById('exampleContainer');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block'; 
 
     if (!userInput) {
         alert('입력된 문장이 없습니다.');
@@ -107,10 +117,37 @@ async function loadMoreExamples() {
                 .split(/\d+\.\s+/)
                 .filter((e) => e.trim());
             examples.forEach((ex, i) => {
-                const div = document.createElement('div');
-                div.innerText = `${exampleOffset + i + 1}. ${ex.trim()}`;
-                container.appendChild(div);
-            });
+    const div = document.createElement('div');
+    div.style.textAlign = 'left';
+    div.style.marginBottom = '10px';
+
+    
+    const span = document.createElement('span');
+    span.innerText = `${exampleOffset + i + 1}. ${ex.trim()} `;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.innerText = '📋';
+    copyBtn.title = '예문 복사';
+    copyBtn.style.border = 'none';
+    copyBtn.style.background = 'transparent';
+    copyBtn.style.cursor = 'pointer';
+    copyBtn.style.fontSize = '16px';
+    copyBtn.style.padding = '0';
+    copyBtn.style.margin = '0';
+    copyBtn.style.display = 'inline';  // 핵심: 인라인으로 붙이기
+
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(ex.trim());
+        copyBtn.innerText = '✅';
+        setTimeout(() => (copyBtn.innerText = '📋'), 1000);
+    };
+
+    span.appendChild(copyBtn);
+    div.appendChild(span);
+    container.appendChild(div);
+});
+
+
             exampleOffset += examples.length;
 
             const moreBtn = document.getElementById('loadMoreBtn');
@@ -132,6 +169,8 @@ async function loadMoreExamples() {
     } catch (error) {
         console.error('예문 요청 오류:', error);
         alert('❗ 예문 불러오기 중 오류 발생');
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -140,6 +179,9 @@ async function mistralRewrite() {
     const originalText = userInput;
     const resultArea = document.getElementById('resultArea');
     // resultArea.innerHTML = ''; // HTML 내용을 지움
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
+
 
     if (!userInput.trim()) {
         alert('입력된 문장이 없습니다.');
@@ -191,6 +233,8 @@ async function mistralRewrite() {
     } catch (error) {
         console.error('Fetch error:', error);
         alert('❗요청 중 오류가 발생했습니다.');
+    } finally {
+      spinner.style.display = 'none';
     }
 }
 
@@ -198,6 +242,8 @@ async function changeStyle(exampleId) {
     const selectedText = document.getElementById(exampleId).innerText.trim();
     const styleRaw = document.getElementById(`${exampleId}-style`).value;
     const style = styleRaw.toLowerCase();
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
 
     console.log('🛠 스타일 적용 요청:', { selectedText, style });
 
@@ -227,6 +273,8 @@ async function changeStyle(exampleId) {
     } catch (error) {
         console.error('스타일 변경 중 오류:', error);
         alert('❗스타일 변경 요청 중 오류가 발생했습니다.');
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -234,6 +282,8 @@ async function summarizeText() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
     resultArea.innerHTML = '';
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
 
     if (!userInput.trim()) {
         alert('입력된 문장이 없습니다.');
@@ -261,12 +311,17 @@ async function summarizeText() {
     } catch (error) {
         console.error('요약 요청 중 오류:', error);
         resultArea.innerText = '❗요약 요청 중 오류가 발생했습니다.';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
 async function expandText() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
+
 
     resultArea.innerHTML = '';
 
@@ -296,12 +351,17 @@ async function expandText() {
     } catch (error) {
         console.error('확장 요청 중 오류:', error);
         resultArea.innerText = '❗확장 요청 중 오류가 발생했습니다.';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
 async function mistralGrammar() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
+
     const tbody = document.querySelector('tbody');
     if (!tbody) {
         console.log('⚠️ tbody 요소가 없습니다. HTML 구조를 확인하세요.');
@@ -393,12 +453,16 @@ async function mistralGrammar() {
     } catch (error) {
         resultArea.innerText = '❗요청 중 오류가 발생했습니다.' + error;
         console.error('Fetch error:', error);
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
 async function cohereHonorific() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
     resultArea.innerHTML = ''; // HTML 내용을 지움
 
     if (!userInput.trim()) {
@@ -436,12 +500,16 @@ async function cohereHonorific() {
     } catch (error) {
         resultArea.innerText = '❗요청 중 오류가 발생했습니다.' + error;
         console.log('Fetch error:', error);
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
 async function cohereInformal() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
     resultArea.innerHTML = ''; // HTML 내용을 지움
 
     if (!userInput.trim()) {
@@ -479,6 +547,8 @@ async function cohereInformal() {
     } catch (error) {
         resultArea.innerText = '❗요청 중 오류가 발생했습니다.' + error;
         console.log('Fetch error:', error);
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -487,6 +557,8 @@ async function applyTranslation() {
     const sourceLang = document.getElementById('sourceSelector').value;
     const targetLang = document.getElementById('targetSelector').value;
     const resultBox = document.getElementById('translateResult');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
     resultBox.innerText = '';
 
     if (!text) {
@@ -526,12 +598,16 @@ async function applyTranslation() {
     } catch (err) {
         console.error('번역 요청 중 오류:', err);
         resultBox.innerText = '❗ 번역 중 오류가 발생했습니다.';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
 async function pdfScanGrammar() {
     const form = document.getElementById('uploadForm');
     const grammarTable = document.getElementById('grammarTable');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
     if (grammarTable) {
         grammarTable.style.visibility = 'visible';
     }
@@ -644,6 +720,8 @@ async function pdfScanGrammar() {
         console.error('Error:', error);
         resultArea.textContent =
             '[에러 발생: PDF를 처리하거나 문법 교정에 실패했습니다]';
+    } finally{
+        spinner.style.display = 'none';
     }
 }
 
@@ -651,6 +729,8 @@ async function pdfScanStyle() {
     const form = document.getElementById('uploadForm');
     const style = document.getElementById('styleSelect').value;
     const grammarTable = document.getElementById('grammarTable');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
     grammarTable.style.visibility = 'hidden';
 
     const fileInput = document.getElementById('pdfFile');
@@ -703,6 +783,8 @@ async function pdfScanStyle() {
         console.error('Error:', error);
         resultArea.textContent =
             '[에러 발생: PDF를 처리하거나 문체 변경에 실패했습니다]';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -710,6 +792,8 @@ async function pdfScanRewrite() {
     // 첨삭
     const form = document.getElementById('uploadForm');
     const grammarTable = document.getElementById('grammarTable');
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
     grammarTable.style.visibility = 'hidden';
 
     const fileInput = document.getElementById('pdfFile');
@@ -719,6 +803,8 @@ async function pdfScanRewrite() {
     formData.append('pdf', file);
 
     const resultArea = document.getElementById('resultArea');
+    const isScanPage = window.location.pathname.includes("scan.html");
+
 
     try {
         const response = await fetch('http://127.0.0.1:8000/pdfScan', {
@@ -740,7 +826,10 @@ async function pdfScanRewrite() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ content: rewriteOriginalText }),
+                body: JSON.stringify({ content: rewriteOriginalText,
+                    style: 'default',
+                    source: 'scan'
+                 }),
             }
         );
 
@@ -748,17 +837,21 @@ async function pdfScanRewrite() {
         console.log('Rewrite Result:', rewriteData.result); // 여기까진 잘 나옴
         resultArea.innerHTML = '';
 
-        const examples = rewriteData.result
-            .split(/예시문 \d+:/)
-            .map((text) => text.trim())
-            .filter((text) => text.length > 0);
+        const examples = isScanPage
+            ? [rewriteData.result.trim()]  // ✅ 하나만 있는 경우: 배열에 통째로 넣음
+            : rewriteData.result
+                .split(/예시문 \d+:/)
+                .map((text) => text.trim())
+                .filter((text) => text.length > 0);
+
         examples.forEach((text, idx) => {
             const exampleId = `example${idx + 1}`;
             const wrapper = document.createElement('div');
             wrapper.id = `${exampleId}-wrapper`;
 
             const label = document.createElement('div');
-            label.innerText = `예시문 ${idx + 1}:`;
+            label.innerText = examples.length === 1 ? '예시문:' : `예시문 ${idx + 1}:`;
+
 
             const content = document.createElement('p');
             content.id = exampleId;
@@ -784,6 +877,8 @@ async function pdfScanRewrite() {
         console.error('Error:', error);
         resultArea.textContent =
             '[에러 발생: PDF를 처리하거나 첨삭에 실패했습니다]';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -792,6 +887,8 @@ async function pdfScanSummary() {
     const form = document.getElementById('uploadForm');
     const grammarTable = document.getElementById('grammarTable');
     grammarTable.style.visibility = 'hidden';
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
 
     const fileInput = document.getElementById('pdfFile');
     const file = fileInput.files[0];
@@ -843,6 +940,8 @@ async function pdfScanSummary() {
         console.error('Error:', error);
         resultArea.textContent =
             '[에러 발생: PDF를 처리하거나 요약에 실패했습니다]';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -851,6 +950,9 @@ async function pdfScanExpand() {
     const form = document.getElementById('uploadForm');
     const grammarTable = document.getElementById('grammarTable');
     grammarTable.style.visibility = 'hidden';
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
+
 
     const fileInput = document.getElementById('pdfFile');
     const file = fileInput.files[0];
@@ -902,6 +1004,8 @@ async function pdfScanExpand() {
         console.error('Error:', error);
         resultArea.textContent =
             '[에러 발생: PDF를 처리하거나 확장에 실패했습니다]';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -909,6 +1013,8 @@ async function pdfScanHonorific() {
     const form = document.getElementById('uploadForm');
     const grammarTable = document.getElementById('grammarTable');
     grammarTable.style.visibility = 'hidden';
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
 
     const fileInput = document.getElementById('pdfFile');
     const file = fileInput.files[0];
@@ -957,6 +1063,8 @@ async function pdfScanHonorific() {
         console.error('Error:', error);
         resultArea.textContent =
             '[에러 발생: PDF를 처리하거나 높임말 변환에 실패했습니다]';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
 
@@ -964,6 +1072,8 @@ async function pdfScanInformal() {
     const form = document.getElementById('uploadForm');
     const grammarTable = document.getElementById('grammarTable');
     grammarTable.style.visibility = 'hidden';
+    const spinner = document.getElementById('loadingSpinner');
+    spinner.style.display = 'block';
 
     const fileInput = document.getElementById('pdfFile');
     const file = fileInput.files[0];
@@ -1012,8 +1122,68 @@ async function pdfScanInformal() {
         console.error('Error:', error);
         resultArea.textContent =
             '[에러 발생: PDF를 처리하거나 반말 변환에 실패했습니다]';
+    } finally {
+        spinner.style.display = 'none';
     }
 }
+
+async function pdfScanTranslate() {
+    const fileInput = document.getElementById('pdfFile');
+    const file = fileInput.files[0];
+    const resultArea = document.getElementById('resultArea');
+    const spinner = document.getElementById('loadingSpinner');
+    const sourceLang = document.getElementById('sourceSelector').value;
+    const targetLang = document.getElementById('targetSelector').value;
+
+    spinner.style.display = 'block';
+    resultArea.innerHTML = '';
+
+    const formData = new FormData();
+    formData.append('pdf', file);
+
+    try {
+        const response = await fetch('http://127.0.0.1:8000/pdfScan', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const result = await response.json();
+        const extractedText = result.text || '[텍스트를 추출하지 못했습니다]';
+
+        const translateResponse = await fetch('http://127.0.0.1:8000/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: extractedText,
+                source: sourceLang,
+                target: targetLang
+            }),
+        });
+
+        const translateData = await translateResponse.json();
+
+        if (translateData.result) {
+            resultArea.innerHTML = `
+                <div id="translatedBox">
+                    <p style="white-space: pre-wrap;">${translateData.result}</p>
+                </div>
+            `;
+
+            document.getElementById('pdfDownloadBtn').addEventListener('click', function () {
+                const translatedBox = document.getElementById('translatedBox');
+                html2pdf(translatedBox);
+            });
+        } else {
+            resultArea.innerText = `⚠️ 번역 오류: ${translateData.error || '알 수 없는 오류'}`;
+        }
+    } catch (error) {
+        console.error('번역 오류:', error);
+        resultArea.innerText = '❗ 번역 중 오류가 발생했습니다.';
+    } finally {
+        spinner.style.display = 'none';
+    }
+}
+
 
 function highlightDifference(a, b) {
     let resultA = '';
