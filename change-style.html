@@ -298,11 +298,12 @@
                         data.error ||
                         '오류가 발생했습니다.';
 
-                    document
-                        .getElementById('pdfDownloadBtn')
-                        .addEventListener('click', function () {
-                            html2pdf(data.styled_text); // 이 방법으로 HTML을 PDF로 변환
-                        });
+                    const pdfBtn = document.getElementById('pdfDownloadBtn');
+                    if (pdfBtn) {
+                        pdfBtn.onclick = function () {
+                            saveAsPDF(data.styled_text, '문체 변경.pdf');
+                        };
+                    }
                 } catch (error) {
                     result.innerText = '❗요청 중 오류 발생';
                     console.error(error);

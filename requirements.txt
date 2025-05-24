@@ -10,3 +10,6 @@ pydantic
 python-multipart
 PyPDF2
 google-cloud-translate
+diff-match-patch
+torch
+transformers

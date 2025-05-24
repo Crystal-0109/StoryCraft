@@ -1,18 +1,21 @@
 .spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
-
 
 #grammarTable {
     width: 100%;
@@ -39,6 +42,65 @@ td {
     background-color: #52558e;
     color: white;
 }
+.rewriteBox,
+.summaryBox,
+.expandBox,
+.styleResult,
+.translateBox,
+.honorificBox,
+.informalBox {
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    margin-top: 16px;
+    white-space: pre-wrap;
+    font-size: 16px;
+    line-height: 1.6;
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.05);
+}
+ins,
+del {
+    display: inline;
+    text-decoration: none;
+    padding: 0 2px;
+    margin: 0;
+}
+
+ins {
+    background-color: #b2f0ff; /* 수정된 부분: 파란 배경 */
+}
+
+del {
+    background-color: #ffd6d6; /* 삭제된 부분: 빨간 배경 */
+}
+.rewriteBox {
+    background-color: #fff8e1;
+    white-space: normal !important;
+}
+.summaryBox {
+    background-color: #f0f4ff; /* 연한 파랑 */
+}
+
+.expandBox {
+    background-color: #f3fff3; /* 연한 초록 */
+}
+
+.styleResult {
+    background-color: #fff0f5; /* 연한 핑크 */
+}
+
+.translateBox {
+    background-color: #f9f9ff; /* 거의 흰색 파랑톤 */
+}
+
+.honorificBox {
+    background-color: #f3f3ff; /* 연한 보라 */
+}
+
+.informalBox {
+    background-color: #fffaf0; /* 연한 베이지 */
+}
+
 .highlight {
     color: red;
     font-weight: bold;
@@ -50,22 +112,49 @@ td {
 
 .highlight-particle {
     background-color: #d8f3dc;
+    display: inline;
+    padding: 0 2px;
+    margin: 0;
+    white-space: normal;
 }
 
 .highlight-extended {
     background-color: #caf0f8;
+    display: inline;
+    padding: 0 2px;
+    margin: 0;
+    white-space: normal;
 }
 
 .highlight-synonym {
     background-color: #fef9c3;
+    display: inline;
+    padding: 0 2px;
+    margin: 0;
+    white-space: normal;
 }
 
 .highlight-formal {
     background-color: #fde2e2;
+    display: inline;
+    padding: 0 2px;
+    margin: 0;
+    white-space: normal;
+}
+.highlight-edit {
+    background-color: #d1ecf1;
+    display: inline;
+    padding: 0 2px;
+    margin: 0;
+    white-space: normal;
 }
 
 .highlight-added {
     background-color: #e0f7fa;
+    display: inline;
+    padding: 0 2px;
+    margin: 0;
+    white-space: normal;
 }
 .highlight-space {
     background-color: #fff0f6;
@@ -95,32 +184,30 @@ td {
     border-radius: 2px;
 }
 .tooltip-wrapper {
-    position: relative;
-    cursor: help;
     display: inline-block;
+    position: relative;
+    white-space: normal;
+    padding: 2px 4px;
+    border-radius: 4px;
 }
 
 .custom-tooltip {
     position: absolute;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
     background-color: #333;
-    color: white;
-    padding: 6px 8px;
+    color: #fff;
+    padding: 2px 6px;
     border-radius: 4px;
     font-size: 12px;
     white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    z-index: 10;
+    z-index: 1000;
+    display: none;
+    top: 100%;
+    left: 0;
 }
 
 .tooltip-wrapper:hover .custom-tooltip {
-    opacity: 1;
+    display: block;
 }
-
 
 #grammarTable td.right {
     white-space: pre-wrap;
@@ -241,23 +328,23 @@ td {
     margin: 10px;
 }
 .resultAreaPdfDownloadBtn_SC {
-    width: auto; 
+    width: auto;
     padding-inline: 10px;
     margin-top: 10px;
 }
 
 /**
-* Template Name: Bikin
-* Template URL: https://bootstrapmade.com/bikin-free-simple-landing-page-template/
-* Updated: Aug 07 2024 with Bootstrap v5.3.3
-* Author: BootstrapMade.com
-* License: https://bootstrapmade.com/license/
-*/
+  * Template Name: Bikin
+  * Template URL: https://bootstrapmade.com/bikin-free-simple-landing-page-template/
+  * Updated: Aug 07 2024 with Bootstrap v5.3.3
+  * Author: BootstrapMade.com
+  * License: https://bootstrapmade.com/license/
+  */
 
 /*--------------------------------------------------------------
-# Font & Color Variables
-# Help: https://bootstrapmade.com/color-system/
---------------------------------------------------------------*/
+  # Font & Color Variables
+  # Help: https://bootstrapmade.com/color-system/
+  --------------------------------------------------------------*/
 /* Fonts */
 :root {
     --default-font: 'Roboto', system-ui, -apple-system, 'Segoe UI', Roboto,
@@ -309,8 +396,8 @@ td {
 }
 
 /*--------------------------------------------------------------
-# General Styling & Shared Classes
---------------------------------------------------------------*/
+  # General Styling & Shared Classes
+  --------------------------------------------------------------*/
 body {
     color: var(--default-color);
     background-color: var(--background-color);
@@ -339,7 +426,7 @@ h6 {
 }
 
 /* PHP Email Form Messages
-------------------------------*/
+  ------------------------------*/
 .php-email-form .error-message {
     display: none;
     background: #df1529;
@@ -391,8 +478,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Global Header
---------------------------------------------------------------*/
+  # Global Header
+  --------------------------------------------------------------*/
 .header {
     color: var(--default-color);
     background-color: var(--background-color);
@@ -456,8 +543,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Navigation Menu
---------------------------------------------------------------*/
+  # Navigation Menu
+  --------------------------------------------------------------*/
 /* Navmenu - Desktop */
 @media (min-width: 1200px) {
     .navmenu {
@@ -698,8 +785,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Global Footer
---------------------------------------------------------------*/
+  # Global Footer
+  --------------------------------------------------------------*/
 .footer {
     color: var(--default-color);
     background-color: var(--background-color);
@@ -861,8 +948,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Preloader
---------------------------------------------------------------*/
+  # Preloader
+  --------------------------------------------------------------*/
 #preloader {
     position: fixed;
     inset: 0;
@@ -897,8 +984,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Scroll Top Button
---------------------------------------------------------------*/
+  # Scroll Top Button
+  --------------------------------------------------------------*/
 .scroll-top {
     position: fixed;
     visibility: hidden;
@@ -930,8 +1017,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Disable aos animation delay on mobile devices
---------------------------------------------------------------*/
+  # Disable aos animation delay on mobile devices
+  --------------------------------------------------------------*/
 @media screen and (max-width: 768px) {
     [data-aos-delay] {
         transition-delay: 0 !important;
@@ -939,8 +1026,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Global Page Titles & Breadcrumbs
---------------------------------------------------------------*/
+  # Global Page Titles & Breadcrumbs
+  --------------------------------------------------------------*/
 .page-title {
     color: var(--default-color);
     background-color: var(--background-color);
@@ -984,8 +1071,8 @@ h6 {
 }
 
 /*--------------------------------------------------------------
-# Global Sections
---------------------------------------------------------------*/
+  # Global Sections
+  --------------------------------------------------------------*/
 section,
 .section {
     color: var(--default-color);
@@ -1003,8 +1090,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Global Section Titles
---------------------------------------------------------------*/
+  # Global Section Titles
+  --------------------------------------------------------------*/
 .section-title {
     text-align: center;
     padding-bottom: 60px;
@@ -1039,8 +1126,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Hero Section
---------------------------------------------------------------*/
+  # Hero Section
+  --------------------------------------------------------------*/
 .hero {
     width: 100%;
     min-height: 50vh;
@@ -1165,8 +1252,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Clients Section
---------------------------------------------------------------*/
+  # Clients Section
+  --------------------------------------------------------------*/
 .clients {
     padding: 20px 0;
 }
@@ -1198,8 +1285,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# About Section
---------------------------------------------------------------*/
+  # About Section
+  --------------------------------------------------------------*/
 .about ul {
     list-style: none;
     padding: 0;
@@ -1248,8 +1335,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Features Section
---------------------------------------------------------------*/
+  # Features Section
+  --------------------------------------------------------------*/
 .features .features-item {
     color: color-mix(in srgb, var(--default-color), transparent 20%);
 }
@@ -1295,8 +1382,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Why Us Section
---------------------------------------------------------------*/
+  # Why Us Section
+  --------------------------------------------------------------*/
 .why-us .card {
     background-color: var(--surface-color);
     color: var(--default-color);
@@ -1329,8 +1416,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Services Section
---------------------------------------------------------------*/
+  # Services Section
+  --------------------------------------------------------------*/
 .services .service-item {
     background-color: var(--surface-color);
     text-align: center;
@@ -1381,8 +1468,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Portfolio Section
---------------------------------------------------------------*/
+  # Portfolio Section
+  --------------------------------------------------------------*/
 .portfolio .portfolio-filters {
     padding: 0;
     margin: 0 auto 20px auto;
@@ -1479,8 +1566,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Testimonials Section
---------------------------------------------------------------*/
+  # Testimonials Section
+  --------------------------------------------------------------*/
 .testimonials .testimonials-carousel,
 .testimonials .testimonials-slider {
     overflow: hidden;
@@ -1575,8 +1662,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Team Section
---------------------------------------------------------------*/
+  # Team Section
+  --------------------------------------------------------------*/
 .team .team-member {
     background-color: var(--surface-color);
     box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
@@ -1701,8 +1788,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Pricing Section
---------------------------------------------------------------*/
+  # Pricing Section
+  --------------------------------------------------------------*/
 .pricing .pricing-item {
     background-color: var(--surface-color);
     padding: 60px 40px;
@@ -1820,8 +1907,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Faq Section
---------------------------------------------------------------*/
+  # Faq Section
+  --------------------------------------------------------------*/
 .faq .faq-container {
     margin-top: 15px;
 }
@@ -1919,8 +2006,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Contact Section
---------------------------------------------------------------*/
+  # Contact Section
+  --------------------------------------------------------------*/
 .contact .info-item + .info-item {
     margin-top: 40px;
 }
@@ -1999,8 +2086,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Portfolio Details Section
---------------------------------------------------------------*/
+  # Portfolio Details Section
+  --------------------------------------------------------------*/
 .portfolio-details .portfolio-details-slider img {
     width: 100%;
 }
@@ -2068,8 +2155,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Service Details Section
---------------------------------------------------------------*/
+  # Service Details Section
+  --------------------------------------------------------------*/
 .service-details .service-box {
     background-color: var(--surface-color);
     padding: 20px;
@@ -2204,9 +2291,8 @@ section,
 }
 
 /*--------------------------------------------------------------
-# Starter Section Section
---------------------------------------------------------------*/
+  # Starter Section Section
+  --------------------------------------------------------------*/
 /* .starter-section { */
 /* Add your styles here */
 /* } */
-
