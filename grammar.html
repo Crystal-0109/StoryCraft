@@ -106,6 +106,11 @@
                                 <span>문법교정 🖊️</span>
                             </button>
                         </div>
+                        <!-- <div>
+                            <button id="grammarBtn2" class="resultBtn_SC">
+                                <span>문법교정2 🖊️</span>
+                            </button>
+                        </div> -->
                         <div
                             id="loadingSpinner"
                             style="
@@ -128,13 +133,19 @@
                             <table id="grammarTable">
                                 <thead>
                                     <tr>
-                                        <th>원문&교정문</th>
+                                        <th>교정문</th>
                                         <th>관련 규범&설명</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <button
+                            id="pdfDownloadBtn"
+                            class="resultBtn_SC resultAreaPdfDownloadBtn_SC"
+                        >
+                            결과를 PDF로 다운로드
+                        </button>
                     </div>
                 </div>
                 <!-- End Section Title -->
@@ -282,6 +293,7 @@
         <!-- Main JS File -->
         <script src="assets/js/main.js"></script>
         <script src="assets/js/script.js"></script>
+        <script src="https://unpkg.com/diff-match-patch"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.js"></script>
     </body>
 </html>

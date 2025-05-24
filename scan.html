@@ -116,7 +116,7 @@
                                 </select>
                                 <button
                                     id="pdfScanStyleBtn"
-                                    type="submit"
+                                    type="button"
                                     name="action"
                                     value="style"
                                     class="resultBtn_SC"
@@ -125,7 +125,7 @@
                                 </button>
                                 <button
                                     id="pdfScanRewriteBtn"
-                                    type="submit"
+                                    type="button"
                                     name="action"
                                     value="rewrite"
                                     class="resultBtn_SC"
@@ -134,7 +134,7 @@
                                 </button>
                                 <button
                                     id="pdfScanSummaryBtn"
-                                    type="submit"
+                                    type="button"
                                     name="action"
                                     value="summary"
                                     class="resultBtn_SC"
@@ -143,7 +143,7 @@
                                 </button>
                                 <button
                                     id="pdfScanExpandBtn"
-                                    type="submit"
+                                    type="button"
                                     name="action"
                                     value="expand"
                                     class="resultBtn_SC"
@@ -152,7 +152,7 @@
                                 </button>
                                 <button
                                     id="pdfScanGrammarBtn"
-                                    type="submit"
+                                    type="button"
                                     name="action"
                                     value="grammar"
                                     class="resultBtn_SC"
@@ -161,7 +161,7 @@
                                 </button>
                                 <button
                                     id="pdfScanHonorificBtn"
-                                    type="submit"
+                                    type="button"
                                     name="action"
                                     value="honorific"
                                     class="resultBtn_SC"
@@ -170,7 +170,7 @@
                                 </button>
                                 <button
                                     id="pdfScanInformalBtn"
-                                    type="submit"
+                                    type="button"
                                     name="action"
                                     value="informal"
                                     class="resultBtn_SC"
@@ -269,7 +269,7 @@
 
                                     <button
                                         id="pdfScanTranslateBtn"
-                                        type="submit"
+                                        type="button"
                                         class="resultBtn_SC"
                                     >
                                         번역하기 🌍
@@ -296,10 +296,14 @@
                             class="resultArea_SC"
                             style="text-align: left"
                         >
-                            <table id="grammarTable" style="visibility: hidden">
+                            <table
+                                id="grammarTable"
+                                class="grammar-table"
+                                style="visibility: hidden"
+                            >
                                 <thead>
                                     <tr>
-                                        <th>원문&교정문</th>
+                                        <th>교정문</th>
                                         <th>관련 규범&설명</th>
                                     </tr>
                                 </thead>
@@ -460,7 +464,7 @@
 
         <!-- Main JS File -->
         <script src="assets/js/main.js"></script>
-        <script src="assets/js/script.js"></script>
+        <script src="assets/js/script.js" defer></script>
         <script src="https://unpkg.com/diff-match-patch"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.js"></script>
     </body>
