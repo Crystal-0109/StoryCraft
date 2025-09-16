@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="utf-8" />
+        <title>StoryCraft Editor (Solo)</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="description" content="" />
+        <meta name="keywords" content="" />
+
+        <!-- Favicons -->
+        <link href="assets/img/favicon.png" rel="icon" />
+        <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
+
+        <!-- Fonts -->
+        <link href="https://fonts.googleapis.com" rel="preconnect" />
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+            rel="stylesheet"
+        />
+
+        <!-- Vendor CSS Files -->
+        <link
+            href="assets/vendor/bootstrap/css/bootstrap.min.css"
+            rel="stylesheet"
+        />
+        <link
+            href="assets/vendor/bootstrap-icons/bootstrap-icons.css"
+            rel="stylesheet"
+        />
+        <link href="assets/vendor/aos/aos.css" rel="stylesheet" />
+        <link
+            href="assets/vendor/glightbox/css/glightbox.min.css"
+            rel="stylesheet"
+        />
+        <link
+            href="assets/vendor/swiper/swiper-bundle.min.css"
+            rel="stylesheet"
+        />
+
+        <!-- Main CSS File -->
+        <link href="assets/css/main.css" rel="stylesheet" />
+        <!-- Quill -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                --bg: #f7f7fb;
+                --card: #fff;
+                --muted: #666;
+                --border: #e9e9ef;
+            }
+            body {
+                margin: 0;
+                font-family: Inter, system-ui, AppleSDGothicNeo,
+                    Apple Color Emoji, Segoe UI Emoji, sans-serif;
+                background: var(--bg);
+            }
+            .wrap {
+                display: grid;
+                grid-template-columns: 1fr 320px;
+                gap: 16px;
+                padding: 20px;
+            }
+            .card {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+            }
+            .toolbar {
+                border-bottom: 1px solid var(--border);
+                padding: 8px 12px;
+            }
+            .editor {
+                min-height: 520px;
+            }
+            .side {
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .side h3 {
+                margin: 0 0 6px;
+                font-size: 16px;
+            }
+            .btn {
+                padding: 10px 12px;
+                border-radius: 12px;
+                border: 1px solid var(--border);
+                background: #fff;
+                cursor: pointer;
+                font-weight: 600;
+            }
+            .btn:hover {
+                background: #fafafa;
+            }
+            .row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .muted {
+                color: var(--muted);
+                font-size: 12px;
+            }
+            .spinner {
+                display: none;
+                font-size: 12px;
+                color: #444;
+            }
+            .footer {
+                padding: 8px 12px;
+                border-top: 1px solid var(--border);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            @media (max-width: 1024px) {
+                .wrap {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body class="index-page">
+        <header id="header" class="header d-flex align-items-center sticky-top">
+            <div
+                class="container position-relative d-flex align-items-center justify-content-between"
+            >
+                <a
+                    href="index.html"
+                    class="logo d-flex align-items-center me-auto me-xl-0"
+                >
+                    <!-- Uncomment the line below if you also wish to use an image logo -->
+                    <!-- <img src="assets/img/logo.png" alt=""> -->
+                    <h1 class="sitename">StoryCraft</h1>
+                </a>
+
+                <nav id="navmenu" class="navmenu">
+                    <ul>
+                        <!-- <li>
+                            <a href="index.html#hero" class="active">Home</a>
+                        </li>
+                        <li><a href="index.html#about">About</a></li>
+                        <li><a href="index.html#services">Services</a></li> -->
+                        <li><a href="search.html">Search</a></li>
+                        <li><a href="rewrite.html">Rewrite</a></li>
+                        <li><a href="change-style.html">Style</a></li>
+                        <li><a href="grammar.html">Grammar</a></li>
+                        <li><a href="honorific.html">Honorific</a></li>
+                        <li><a href="translate.html">Translate</a></li>
+                        <li><a href="scan.html">Scan</a></li>
+                        <li><a href="image.html">Image Scan</a></li>
+                        <li><a href="speech.html">Speech</a></li>
+                        <li><a href="editor.html" class="active">Editor</a></li>
+                    </ul>
+                    <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+                </nav>
+            </div>
+        </header>
+        <div class="wrap">
+            <!-- 에디터 카드 -->
+            <div class="card">
+                <div class="toolbar">
+                    <div id="quill-toolbar">
+                        <span class="ql-formats">
+                            <select class="ql-header">
+                                <option value="1"></option>
+                                <option value="2"></option>
+                                <option selected></option>
+                            </select>
+                            <select class="ql-font"></select>
+                            <select class="ql-size"></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                            <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                            <select class="ql-align"></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-link"></button>
+                            <button class="ql-blockquote"></button>
+                            <button class="ql-code-block"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-clean"></button>
+                        </span>
+                    </div>
+                </div>
+                <div id="quill" class="editor"></div>
+                <div class="footer">
+                    <span id="spinner" class="spinner">⏳ 서버 처리 중…</span>
+                </div>
+                <div
+                    id="resultArea"
+                    class="card"
+                    style="margin-top: 12px; padding: 12px"
+                ></div>
+                <div
+                    style="
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        margin-top: 8px;
+                    "
+                >
+                    <span id="loadingSpinner" style="display: none"
+                        >⏳ 처리 중…</span
+                    >
+                    <button
+                        id="pdfDownloadBtn"
+                        class="btn btn-outline"
+                        type="button"
+                    >
+                        🖨️ PDF 저장
+                    </button>
+                </div>
+
+                <!-- 공용 스크립트가 읽는 입력값(Quill↔공용 함수 연결용) -->
+                <textarea id="userInput" style="display: none"></textarea>
+                <input id="styleInput" type="hidden" />
+                <input id="translateInput" type="hidden" />
+            </div>
+
+            <!-- 사이드 툴 패널 -->
+            <div class="card side">
+                <h3>StoryCraft Tools</h3>
+
+                <!-- 번역 & 가져오기 -->
+                <div class="tool-section">
+                    <p class="section-title">Translate & Import</p>
+
+                    <!-- 원본/대상 언어: translate.html과 동일한 옵션 유지 -->
+                    <div class="row" style="gap: 6px; align-items: center">
+                        <!-- 원본 언어 선택 -->
+                        <select
+                            id="sourceSelector"
+                            class="btn btn-ghost"
+                            title="원본 언어"
+                        >
+                            <option value="auto" selected>자동 감지</option>
+                            <option value="gu">구자라트어</option>
+                            <option value="el">그리스어</option>
+                            <option value="ne">네팔어</option>
+                            <option value="nl">네덜란드어</option>
+                            <option value="de">독일어</option>
+                            <option value="ru">러시아어</option>
+                            <option value="ro">루마니아어</option>
+                            <option value="mr">마라티어</option>
+                            <option value="ms">말레이어</option>
+                            <option value="vi">베트남어</option>
+                            <option value="bn">벵골어</option>
+                            <option value="sv">스웨덴어</option>
+                            <option value="es">스페인어</option>
+                            <option value="af">아프리칸스어</option>
+                            <option value="ar">아랍어</option>
+                            <option value="en">영어</option>
+                            <option value="uk">우크라이나어</option>
+                            <option value="it">이탈리아어</option>
+                            <option value="ja">일본어</option>
+                            <option value="jv">자바어</option>
+                            <option value="ka">조지아어</option>
+                            <option value="zh-CN">중국어(간체)</option>
+                            <option value="zh-TW">중국어(번체)</option>
+                            <option value="ta">타밀어</option>
+                            <option value="th">태국어</option>
+                            <option value="tr">터키어</option>
+                            <option value="fa">페르시아어</option>
+                            <option value="pt">포르투갈어</option>
+                            <option value="pl">폴란드어</option>
+                            <option value="fr">프랑스어</option>
+                            <option value="ko">한국어</option>
+                            <option value="hi">힌디어</option>
+                        </select>
+
+                        <!-- 대상 언어 선택 -->
+                        <select
+                            id="targetSelector"
+                            class="btn btn-ghost"
+                            title="대상 언어"
+                        >
+                            <option value="gu">구자라트어</option>
+                            <option value="el">그리스어</option>
+                            <option value="ne">네팔어</option>
+                            <option value="nl">네덜란드어</option>
+                            <option value="de">독일어</option>
+                            <option value="ru">러시아어</option>
+                            <option value="ro">루마니아어</option>
+                            <option value="mr">마라티어</option>
+                            <option value="ms">말레이어</option>
+                            <option value="vi">베트남어</option>
+                            <option value="bn">벵골어</option>
+                            <option value="sv">스웨덴어</option>
+                            <option value="es">스페인어</option>
+                            <option value="af">아프리칸스어</option>
+                            <option value="ar">아랍어</option>
+                            <option value="en" selected>영어</option>
+                            <option value="uk">우크라이나어</option>
+                            <option value="it">이탈리아어</option>
+                            <option value="ja">일본어</option>
+                            <option value="jv">자바어</option>
+                            <option value="ka">조지아어</option>
+                            <option value="zh-CN">중국어(간체)</option>
+                            <option value="zh-TW">중국어(번체)</option>
+                            <option value="ta">타밀어</option>
+                            <option value="th">태국어</option>
+                            <option value="tr">터키어</option>
+                            <option value="fa">페르시아어</option>
+                            <option value="pt">포르투갈어</option>
+                            <option value="pl">폴란드어</option>
+                            <option value="fr">프랑스어</option>
+                            <option value="ko">한국어</option>
+                            <option value="hi">힌디어</option>
+                        </select>
+                    </div>
+
+                    <div class="row" style="margin-top: 8px">
+                        <button class="btn btn-outline" id="btn-translate">
+                            🌐 번역
+                        </button>
+                    </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <!-- 문체 & 톤 -->
+                <div class="tool-section">
+                    <p class="section-title">Style & Tone</p>
+
+                    <!-- 문체 선택: change-style.html과 동일 옵션 유지 -->
+                    <div class="row" style="gap: 6px">
+                        <select
+                            id="styleSelector"
+                            class="btn btn-ghost"
+                            title="문체 선택"
+                        >
+                            <option value="casual">구어체</option>
+                            <option value="formal" selected>격식체</option>
+                            <option value="literary">문학체</option>
+                            <option value="academic">학술체</option>
+                        </select>
+                        <button class="btn btn-outline" id="btn-style">
+                            ✒️ 문체변경
+                        </button>
+                    </div>
+
+                    <div class="row" style="margin-top: 8px">
+                        <button class="btn" id="btn-honorific">
+                            🙇 높임말
+                        </button>
+                        <button class="btn" id="btn-informal">🙂 반말</button>
+                    </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <!-- 첨삭/요약/확장 -->
+                <div class="tool-section">
+                    <p class="section-title">Rewrite & Summarize</p>
+                    <div class="row">
+                        <button class="btn btn-primary" id="btn-rewrite">
+                            🛠️ 첨삭
+                        </button>
+                        <button class="btn btn-outline" id="btn-summary">
+                            🧾 요약
+                        </button>
+                    </div>
+                    <div class="row" style="margin-top: 8px">
+                        <button class="btn" id="btn-expand">➕ 확장</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+        <script>
+            // ===== 0) 환경 =====
+            const BASE_URL = 'http://127.0.0.1:8000'; // ← 네 FastAPI 주소로 변경
+            const $spinner = document.getElementById('spinner');
+
+            // ===== 1) Quill 초기화 =====
+            const quill = new Quill('#quill', {
+                modules: { toolbar: '#quill-toolbar' },
+                theme: 'snow',
+                placeholder: '여기에 문서를 작성하세요…',
+            });
+
+            // 유틸: 텍스트 ↔ 델타 업데이트
+            function setEditorText(text) {
+                // 덮어쓰기 (필요하면 diff/merge로 바꿀 수 있음)
+                quill.setText(text || '');
+            }
+            function getEditorText() {
+                return quill.getText(); // 서식 제외 순수 텍스트
+            }
+            function showSpin(v) {
+                $spinner.style.display = v ? 'inline' : 'none';
+            }
+
+            // ===== 2) 공통 호출 함수 =====
+            async function postJSON(url, payload) {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) {
+                    const t = await res.text();
+                    throw new Error(`HTTP ${res.status} - ${t}`);
+                }
+                return res.json();
+            }
+
+            // ===== 3) 각 기능 핸들러 =====
+            async function doRewrite() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/mistralRewrite`, {
+                        content,
+                    });
+                    setEditorText((data.result || '').trim());
+                } catch (e) {
+                    alert('첨삭 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            async function doSummary() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/summary`, {
+                        content,
+                    }); // 네가 쓰는 요약 엔드포인트 이름으로 변경
+                    setEditorText((data.result || '').trim());
+                } catch (e) {
+                    alert('요약 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            async function doExpand() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/expand`, {
+                        content,
+                    }); // 확장 엔드포인트로 변경
+                    setEditorText((data.result || '').trim());
+                } catch (e) {
+                    alert('확장 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            async function doStyle() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/changeStyle`, {
+                        content,
+                        style: '공손체',
+                    }); // 필요 파라미터 맞춰 수정
+                    setEditorText((data.result || '').trim());
+                } catch (e) {
+                    alert('문체변경 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            async function doHonorific() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/honorific`, {
+                        content,
+                    });
+                    setEditorText((data.result || '').trim());
+                } catch (e) {
+                    alert('높임말 변환 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            async function doInformal() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/informal`, {
+                        content,
+                    });
+                    setEditorText((data.result || '').trim());
+                } catch (e) {
+                    alert('반말 변환 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            async function doTranslate() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/translate`, {
+                        text: content,
+                        source: 'auto',
+                        target: 'en',
+                    });
+                    setEditorText(
+                        (data.translated || data.result || '').trim()
+                    );
+                } catch (e) {
+                    alert('번역 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            async function doOCRorFile() {
+                const file = document.getElementById('file-input').files[0];
+                if (!file) {
+                    alert('파일을 선택하세요.');
+                    return;
+                }
+
+                const form = new FormData();
+                // 서버 구현에 맞춰 필드명 선택:
+                // 1) 이미지 OCR: 'image'
+                // 2) 일반 문서 추출: 'file' 또는 네 서버의 /fileScan 규약
+                if (/\.(png|jpg|jpeg|bmp|tif|tiff)$/i.test(file.name)) {
+                    form.append('image', file);
+                    await uploadTo(`${BASE_URL}/visionOCR`, form, 'text');
+                } else {
+                    form.append('file', file);
+                    await uploadTo(`${BASE_URL}/fileScan`, form, 'text');
+                }
+            }
+            async function uploadTo(url, form, expectField = 'text') {
+                showSpin(true);
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        body: form,
+                    });
+                    if (!res.ok) {
+                        throw new Error(
+                            `HTTP ${res.status} - ${await res.text()}`
+                        );
+                    }
+                    const data = await res.json();
+                    const text = (
+                        data[expectField] ||
+                        data.result ||
+                        ''
+                    ).toString();
+                    setEditorText(text.trim());
+                } catch (e) {
+                    alert('불러오기 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
+
+            // ===== 4) 버튼 바인딩 =====
+            document.getElementById('btn-rewrite').onclick = doRewrite;
+            document.getElementById('btn-summary').onclick = doSummary;
+            document.getElementById('btn-expand').onclick = doExpand;
+            document.getElementById('btn-style').onclick = doStyle;
+            document.getElementById('btn-honorific').onclick = doHonorific;
+            document.getElementById('btn-informal').onclick = doInformal;
+            document.getElementById('btn-translate').onclick = doTranslate;
+            document.getElementById('btn-ocr').onclick = doOCRorFile;
+        </script>
+
+        <!-- Preloader -->
+        <div id="preloader"></div>
+
+        <!-- Vendor JS Files -->
+        <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <script src="assets/vendor/php-email-form/validate.js"></script>
+        <script src="assets/vendor/aos/aos.js"></script>
+        <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+        <script src="assets/vendor/imagesloaded/imagesloaded.pkgd.min.js"></script>
+        <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
+        <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+
+        <script src="assets/js/script.js"></script>
+        <script src="assets/js/main.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.js"></script>
+    </body>
+</html>

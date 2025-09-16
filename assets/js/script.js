@@ -76,6 +76,73 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfScanTranslate();
         });
     }
+    const speechStyleBtn = document.getElementById('speechStyleBtn');
+    if (speechStyleBtn) {
+        speechStyleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            speechStyle(lastRecordedFile);
+        });
+    }
+    const speechRewriteBtn = document.getElementById('speechRewriteBtn');
+    if (speechRewriteBtn) {
+        speechRewriteBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            speechRewrite(lastRecordedFile);
+        });
+    }
+    const speechSummaryBtn = document.getElementById('speechSummaryBtn');
+    if (speechSummaryBtn) {
+        speechSummaryBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (lastRecordedFile) {
+                speechSummary(lastRecordedFile); // 🔹 녹음 파일 전달
+            } else {
+                speechSummary(); // 🔹 업로드 input에서 가져오기
+            }
+        });
+    }
+    const speechExpandBtn = document.getElementById('speechExpandBtn');
+    if (speechExpandBtn) {
+        speechExpandBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            speechExpand(lastRecordedFile);
+        });
+    }
+    const speechHonorificBtn = document.getElementById('speechHonorificBtn');
+    if (speechHonorificBtn) {
+        speechHonorificBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            speechHonorific(lastRecordedFile);
+        });
+    }
+    const speechInformalBtn = document.getElementById('speechInformalBtn');
+    if (speechInformalBtn) {
+        speechInformalBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            speechInformal(lastRecordedFile);
+        });
+    }
+    const speechTranslateBtn = document.getElementById('speechTranslateBtn');
+    if (speechTranslateBtn) {
+        speechTranslateBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            speechTranslate(lastRecordedFile);
+        });
+    }
+    const startRecord = document.getElementById('startRecord');
+    if (startRecord) {
+        startRecord.addEventListener('click', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+    }
+    const stopRecord = document.getElementById('stopRecord');
+    if (stopRecord) {
+        stopRecord.addEventListener('click', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+    }
 });
 
 async function searchExample() {
@@ -898,17 +965,96 @@ async function applyTranslation() {
     }
 }
 
+window.getSelectedFile = function () {
+    const any = document.getElementById('fileAny');
+    if (any && any.files && any.files[0]) return any.files[0];
+
+    const img = document.getElementById('imageFile');
+    if (img && img.files && img.files[0]) return img.files[0];
+
+    const pdf = document.getElementById('pdfFile');
+    if (pdf && pdf.files && pdf.files[0]) return pdf.files[0];
+
+    return null;
+};
+
+window.isImageFile = function (file) {
+    if (!file) return false;
+    const mime = (file.type || '').toLowerCase();
+    const name = (file.name || '').toLowerCase();
+    return (
+        mime.startsWith('image/') ||
+        /\.(png|jpe?g|gif|bmp|webp|tiff?)$/.test(name)
+    );
+};
+
+window.extractTextFromAnyFile = async function (file) {
+    if (!file) throw new Error('파일이 없습니다.');
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${BASE_URL}/fileScan`, {
+        method: 'POST',
+        body: fd,
+    });
+    if (!res.ok) {
+        const raw = await res.text().catch(() => '');
+        throw new Error(`fileScan HTTP ${res.status} - ${raw || ''}`);
+    }
+    const js = await res.json();
+    return (js.text || '').toString();
+};
+
+function getSelectedFile() {
+    const any = document.getElementById('fileAny');
+    if (any && any.files && any.files[0]) return any.files[0];
+
+    const img = document.getElementById('imageFile');
+    if (img && img.files && img.files[0]) return img.files[0];
+
+    const pdf = document.getElementById('pdfFile');
+    if (pdf && pdf.files && pdf.files[0]) return pdf.files[0];
+
+    return null;
+}
+
+function isImageFile(file) {
+    if (!file) return false;
+
+    const mime = (file.type || '').toLowerCase();
+    const name = (file.name || '').toLowerCase();
+    return (
+        mime.startsWith('image/') ||
+        /\.(png|jpe?g|gif|bmp|webp|tiff?)$/.test(name)
+    );
+}
+
 async function handlePdfScanAndProcess({
     apiEndpoint,
     boxClass,
     resultKey = 'result',
     extraPayload = {},
 }) {
-    const spinner = document.getElementById('loadingSpinner');
-    const resultArea = document.getElementById('resultArea');
-    const fileInput = document.getElementById('pdfFile');
-    const file = fileInput ? fileInput.files[0] : null;
+    const resultArea =
+        document.getElementById('resultArea') ||
+        document.getElementById('ocrResult');
+    const file = getSelectedFile();
+    if (file) {
+        if (isImageFile(file)) {
+            const fd = new FormData();
+            fd.append('image', file);
+            const res = await fetch(`${BASE_URL}/visionOCR`, {
+                method: 'POST',
+                body: fd,
+            });
+            const js = await res.json();
+            extractedText = (js.text || js.result || '').toString();
+        } else {
+            extractedText = await extractTextFromAnyFile(file);
+        }
+        window.lastExtractedText = extractedText;
+    }
 
+    const spinner = document.getElementById('loadingSpinner');
     if (!spinner || !resultArea) {
         console.error('❗ spinner 또는 resultArea 요소가 없습니다.');
         return;
@@ -917,7 +1063,6 @@ async function handlePdfScanAndProcess({
     spinner.style.display = 'block';
 
     const formData = new FormData();
-    if (file) formData.append('pdf', file);
 
     try {
         let extractedText = '';
@@ -925,29 +1070,28 @@ async function handlePdfScanAndProcess({
         if (lastExtractedText && !file) {
             extractedText = lastExtractedText;
         } else if (file) {
-            const response = await fetch(`${BASE_URL}/pdfScan`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            const contentType = response.headers.get('content-type');
-            if (!response.ok) {
-                throw new Error(`PDF 업로드 실패: ${response.status}`);
+            if (isImageFile(file)) {
+                const fd = new FormData();
+                fd.append('image', file);
+                const res = await fetch(`${BASE_URL}/visionOCR`, {
+                    method: 'POST',
+                    body: fd,
+                });
+                if (!res.ok) {
+                    const raw = await res.text().catch(() => '');
+                    throw new Error(
+                        `visionOCR HTTP ${res.status} - ${raw || ''}`
+                    );
+                }
+                const js = await res.json();
+                extractedText = (js.text || js.result || '').toString();
+            } else {
+                const text = await extractTextFromAnyFile(file); // 문서 → /fileScan
+                extractedText = text || '[텍스트를 추출하지 못했습니다]';
             }
-
-            if (!contentType || !contentType.includes('application/json')) {
-                const raw = await response.text();
-                console.error('❌ JSON 응답 아님:', raw);
-                throw new Error('JSON 형식이 아님: ' + raw);
-            }
-
-            const extractResult = await response.json();
-            console.log('🧾 추출된 텍스트:', extractResult.text);
-            extractedText =
-                extractResult.text || '[텍스트를 추출하지 못했습니다]';
             lastExtractedText = extractedText;
         } else {
-            alert('PDF 파일을 업로드하거나 텍스트를 먼저 추출해주세요.');
+            alert('문서를 업로드하거나 텍스트를 먼저 추출해주세요.');
             spinner.style.display = 'none';
             return;
         }
@@ -955,10 +1099,11 @@ async function handlePdfScanAndProcess({
         let requestBody = {};
         if (apiEndpoint === 'gptStyleChange') {
             requestBody = { text: extractedText, ...extraPayload };
+        } else if (apiEndpoint === 'translate') {
+            requestBody = { text: extractedText, ...extraPayload };
         } else {
             requestBody = { content: extractedText, ...extraPayload };
         }
-
         const apiResponse = await fetch(`${BASE_URL}/${apiEndpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -968,7 +1113,7 @@ async function handlePdfScanAndProcess({
         const data = await apiResponse.json();
         const resultText = data[resultKey];
 
-        console.log('📦 API 응답 데이터 전체:', data); // ✅ 전체 응답 확인
+        console.log('📦 API 응답 데이터 전체:', data);
         console.log('📌 추출된 resultText:', resultText);
 
         resultArea.innerHTML = '';
@@ -1028,7 +1173,7 @@ async function handlePdfScanAndProcess({
             resultArea.appendChild(errorBox);
         }
     } catch (err) {
-        alert('📛 PDF 추출 중 오류: ' + err.message);
+        alert('📛 스캔/추출 중 오류: ' + err.message);
         console.error('❌ PDF 추출 실패:', err);
         const errorBox = document.createElement('div');
         errorBox.className = boxClass;
@@ -1049,96 +1194,124 @@ async function handlePdfScanAndProcess({
 // }
 
 async function pdfScanGrammar() {
-    const fileInput = document.getElementById('pdfFile');
-    const file = fileInput.files[0];
-
+    const file = getSelectedFile();
+    const grammarBox = document.getElementById('grammarBox');
     const grammarTable = document.getElementById('grammarTable');
     const tbody = grammarTable ? grammarTable.querySelector('tbody') : null;
-    const resultArea = document.getElementById('resultArea');
+    const resultArea =
+        document.getElementById('resultArea') ||
+        document.getElementById('ocrResult');
     const spinner = document.getElementById('loadingSpinner');
-    const grammarBox = document.getElementById('grammarBox');
 
-    if (grammarBox) {
-        grammarBox.style.display = 'block';
+    if (tbody) while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    if (resultArea) resultArea.textContent = '';
+    if (grammarBox) grammarBox.style.display = 'none';
+    if (spinner) spinner.style.display = 'block';
+
+    try {
+        await fetch(`${BASE_URL}/whoami`, { cache: 'no-store' });
+    } catch {}
+
+    let sourceText = '';
+    try {
+        if (file) {
+            if (isImageFile(file)) {
+                const fd = new FormData();
+                fd.append('image', file);
+                const res = await fetch(`${BASE_URL}/visionOCR`, {
+                    method: 'POST',
+                    body: fd,
+                });
+                if (!res.ok) throw new Error(`visionOCR HTTP ${res.status}`);
+                const js = await res.json();
+                sourceText = (js.text || js.result || '').toString().trim();
+            } else {
+                sourceText = (await extractTextFromAnyFile(file))
+                    .toString()
+                    .trim();
+            }
+        } else {
+            const lt =
+                (typeof lastExtractedText !== 'undefined' &&
+                    lastExtractedText) ||
+                window.lastExtractedText;
+            sourceText = (lt || '').toString().trim();
+        }
+    } catch (e) {
+        console.error('원문 확보 실패:', e);
     }
 
-    if (!file) {
-        alert('📄 먼저 PDF 파일을 업로드해 주세요.');
-        return;
-    }
-    if (!grammarTable || !tbody) {
+    if (!sourceText) {
+        if (spinner) spinner.style.display = 'none';
         alert(
-            '❌ grammarTable이 존재하지 않거나 구조가 잘못되었습니다. HTML을 확인하세요.'
+            '📄 PDF를 업로드하거나 📷 이미지를 스캔하여 텍스트를 먼저 추출해주세요.'
         );
         return;
     }
 
-    resultArea.innerHTML = '';
-
-    while (tbody.firstChild) {
-        tbody.removeChild(tbody.firstChild);
+    const MAX_LEN = 8000;
+    if (sourceText.length > MAX_LEN) {
+        console.warn('⚠️ 길이가 길어 앞부분만 전송합니다:', MAX_LEN);
+        sourceText = sourceText.slice(0, MAX_LEN);
     }
 
-    spinner.style.display = 'block';
-
-    const formData = new FormData();
-    formData.append('pdf', file);
-
     try {
-        const response = await fetch(`${BASE_URL}/pdfScan`, {
-            method: 'POST',
-            body: formData,
-        });
-        const result = await response.json();
-        const grammarOriginalText =
-            result.text || '[텍스트를 추출하지 못했습니다]';
-
-        const grammarResponse = await fetch(`${BASE_URL}/mistralGrammar`, {
+        const resp = await fetch(`${BASE_URL}/mistralGrammar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: grammarOriginalText }),
+            body: JSON.stringify({ content: sourceText }),
         });
 
-        const grammarData = await grammarResponse.json();
-        const text = grammarData.result;
+        if (!resp.ok) {
+            const txt = await resp.text().catch(() => '');
+            throw new Error(
+                `mistralGrammar HTTP ${resp.status} ${txt ? '- ' + txt : ''}`
+            );
+        }
 
-        if (text) {
-            const lines = text
-                .split(/\n+/)
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0);
-            const removeIcons = (txt) => txt.replace(/^[^\w가-힣]+/, '').trim();
-            let hasError = false;
+        const data = await resp.json();
+        const raw = (data.result || '').toString();
+        const lines = raw
+            .split(/\n+/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+        const removeIcons = (s) => s.replace(/^[^\w가-힣]+/, '').trim();
 
-            for (let i = 0; i < lines.length; i += 4) {
-                const cleanLine1 = removeIcons(lines[i]);
-                const cleanLine2 = removeIcons(lines[i + 1]);
+        let hasError = false;
+        const correctedOnly = [];
 
-                if (cleanLine1 === cleanLine2) continue;
+        for (let i = 0; i < lines.length; i += 4) {
+            const cleanLine1 = removeIcons(lines[i] || '');
+            const cleanLine2 = removeIcons(lines[i + 1] || '');
+            const rule1 = lines[i + 2] || '';
+            const rule2 = lines[i + 3] || '';
+            if (!cleanLine1 && !cleanLine2) continue;
+            if (cleanLine1 === cleanLine2) continue;
 
-                hasError = true;
+            hasError = true;
+            correctedOnly.push(cleanLine2);
 
+            if (tbody) {
                 const row = document.createElement('tr');
                 const tdLeft = document.createElement('td');
                 const tdRight = document.createElement('td');
                 tdRight.classList.add('right');
 
-                tdLeft.innerHTML = `<span class="sentence">${textDiff(
-                    cleanLine1,
-                    cleanLine2
-                )}</span>`;
-                tdRight.textContent =
-                    (lines[i + 2] || '') + '\n' + (lines[i + 3] || '');
+                // 원문/교정문
+                tdLeft.innerText = `❌ ${cleanLine1}\n✅ ${cleanLine2}`;
+                // 규칙/설명
+                tdRight.textContent = `${rule1}\n${rule2}`;
 
+                // 복사 버튼
                 const copyBtn = document.createElement('button');
                 copyBtn.innerText = '📋';
                 copyBtn.title = '교정문 복사';
                 copyBtn.style =
-                    'border: none; background: transparent; cursor: pointer; font-size: 16px;';
+                    'border:none;background:transparent;cursor:pointer;font-size:16px;';
                 copyBtn.onclick = () => {
                     navigator.clipboard.writeText(cleanLine2.trim());
                     copyBtn.innerText = '✅';
-                    setTimeout(() => (copyBtn.innerText = '📋'), 1000);
+                    setTimeout(() => (copyBtn.innerText = '📋'), 900);
                 };
 
                 tdLeft.appendChild(copyBtn);
@@ -1146,28 +1319,51 @@ async function pdfScanGrammar() {
                 row.appendChild(tdRight);
                 tbody.appendChild(row);
             }
-
-            if (!hasError) alert('🎉 틀린 부분이 없습니다.');
-
-            const pdfBtn = document.getElementById('pdfDownloadBtn');
-            if (pdfBtn) {
-                pdfBtn.onclick = function () {
-                    saveAsPDF(grammarTable, '스캔 문법 교정.pdf');
-                };
-            }
-        } else {
-            resultArea.innerText = grammarData.error
-                ? `⚠️ 오류: ${grammarData.error}\n🔍 상세: ${
-                      grammarData.detail || '없음'
-                  }`
-                : '⚠️ 알 수 없는 오류가 발생했습니다.';
         }
-    } catch (error) {
-        console.error('Error:', error);
-        resultArea.textContent =
-            '[에러 발생: PDF를 처리하거나 문법 교정에 실패했습니다]';
+
+        // 표 + 교정문만 결과 영역에 출력
+        /* if (grammarBox) grammarBox.style.display = 'block';
+    if (resultArea) {
+      const out = correctedOnly.length ? correctedOnly.join('\n') : '[틀린 부분이 없거나 교정 결과가 비어 있습니다]';
+      const pre = document.createElement('pre');
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.margin = '0';
+      pre.textContent = out;
+      resultArea.innerHTML = '';
+      resultArea.appendChild(pre);
+    }*/
+
+        if (grammarBox && tbody && tbody.children.length > 0) {
+            grammarBox.style.display = 'block';
+            if (resultArea) resultArea.style.display = 'none';
+        }
+
+        if (!hasError) alert('🎉 틀린 부분이 없습니다.');
+
+        // PDF 저장 버튼 리바인딩
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            const newBtn = pdfBtn.cloneNode(true);
+            pdfBtn.replaceWith(newBtn);
+            newBtn.style.display = 'inline-block';
+            newBtn.addEventListener('click', () =>
+                saveAsPDF(grammarBox || grammarTable, '문법 교정.pdf')
+            );
+        }
+    } catch (e) {
+        console.error('문법 교정 실패:', e);
+
+        if (resultArea) {
+            resultArea.style.display = 'block';
+            resultArea.textContent = String(e).includes('HTTP 413')
+                ? '⚠️ 텍스트가 너무 길어 일부만 보내 주세요.'
+                : String(e).includes('HTTP 502')
+                ? '⚠️ 서버가 잠시 응답하지 않았습니다. 잠시 후 다시 시도해주세요.'
+                : '❌ 문법 교정 중 오류가 발생했습니다.';
+        }
+        if (grammarBox) grammarBox.style.display = 'none';
     } finally {
-        spinner.style.display = 'none';
+        if (spinner) spinner.style.display = 'none';
     }
 }
 
@@ -1257,33 +1453,7 @@ async function pdfScanTranslate() {
     const sourceLang = document.getElementById('sourceSelector').value;
     const targetLang = document.getElementById('targetSelector').value;
 
-    const fileInput = document.getElementById('pdfFile');
-    const file = fileInput ? fileInput.files[0] : null;
-
-    if (!file && (!lastExtractedText || !lastExtractedText.trim())) {
-        alert('PDF 파일을 먼저 업로드해 주세요.');
-        return;
-    }
-
-    let textToTranslate = lastExtractedText;
-
-    if (file) {
-        const formData = new FormData();
-        formData.append('pdf', file);
-
-        try {
-            const extractResponse = await fetch(`${BASE_URL}/pdfScan`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            const extractResult = await extractResponse.json();
-            textToTranslate = extractResult.text;
-            lastExtractedText = textToTranslate;
-        } catch (err) {
-            alert('PDF 텍스트 추출 실패: ' + err.message);
-            return;
-        }
+    if (!lastExtractedText || !lastExtractedText.trim()) {
     }
 
     await handlePdfScanAndProcess({
@@ -1291,7 +1461,6 @@ async function pdfScanTranslate() {
         boxClass: 'translateBox',
         resultKey: 'result',
         extraPayload: {
-            text: textToTranslate,
             source: sourceLang,
             target: targetLang,
         },
@@ -1357,7 +1526,6 @@ function highlightDiffWithType(original, revised) {
             );
             i++;
         } else if (op === 1) {
-            // 삽입 단독 (del 없이 add만 있을 경우)
             const prefix = text.match(/^\s*/)[0];
             const suffix = text.match(/\s*$/)[0];
             const cleanText = text.trim();
@@ -1391,7 +1559,7 @@ function saveAsPDF(content, filename = 'converted.pdf') {
 
     html2pdf()
         .set({
-            margin: [10, 10, 10, 10], // 여백 mm
+            margin: [10, 10, 10, 10],
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
@@ -1399,4 +1567,450 @@ function saveAsPDF(content, filename = 'converted.pdf') {
         })
         .from(source)
         .save();
+}
+
+async function performOCR() {
+    const spinner = document.getElementById('loadingSpinner');
+    const resultArea =
+        document.getElementById('ocrResult') ||
+        document.getElementById('resultArea');
+    const grammarBox = document.getElementById('grammarBox');
+
+    // 초기화
+    if (grammarBox) grammarBox.style.display = 'none';
+    if (resultArea) resultArea.textContent = '';
+    if (spinner) spinner.style.display = 'block';
+
+    try {
+        await fetch(`${BASE_URL}/whoami`, { cache: 'no-store' });
+    } catch {}
+
+    const file = getSelectedFile();
+
+    try {
+        let extractedText = '';
+
+        if (file) {
+            if (isImageFile(file)) {
+                const fd = new FormData();
+                fd.append('image', file);
+                const res = await fetch(`${BASE_URL}/visionOCR`, {
+                    method: 'POST',
+                    body: fd,
+                });
+                if (!res.ok) {
+                    const raw = await res.text().catch(() => '');
+                    throw new Error(
+                        `visionOCR HTTP ${res.status} - ${raw || ''}`
+                    );
+                }
+                const js = await res.json();
+                extractedText = (js.text || js.result || '').toString();
+            } else {
+                extractedText = await extractTextFromAnyFile(file);
+            }
+            window.lastExtractedText = extractedText;
+        } else if (window.lastExtractedText) {
+            extractedText = window.lastExtractedText;
+        } else {
+            alert('이미지 또는 문서를 먼저 업로드해 주세요.');
+            return;
+        }
+
+        if (resultArea) {
+            resultArea.textContent =
+                extractedText || '[텍스트를 추출하지 못했습니다]';
+        }
+    } catch (err) {
+        console.error('❌ 스캔 오류:', err);
+        alert(`스캔 오류: ${err.message || err}`);
+    } finally {
+        if (spinner) spinner.style.display = 'none';
+    }
+}
+
+async function translateOCR() {
+    const sourceLang =
+        document.getElementById('sourceSelector')?.value || 'auto';
+    const targetLang = document.getElementById('targetSelector')?.value || 'en';
+
+    if (!lastExtractedText || !lastExtractedText.trim()) {
+        alert('먼저 이미지를 스캔해서 텍스트를 추출해주세요.');
+        return;
+    }
+
+    const spinner = document.getElementById('loadingSpinner');
+
+    const resultArea =
+        document.getElementById('ocrResult') ||
+        document.getElementById('resultArea');
+
+    if (!spinner) {
+        console.warn('❗ spinner 요소가 없습니다.');
+    }
+
+    await handlePdfScanAndProcess({
+        apiEndpoint: 'translate',
+        boxClass: 'translateBox',
+        resultKey: 'result',
+        extraPayload: {
+            source: sourceLang,
+            target: targetLang,
+        },
+    });
+}
+
+async function summarizeOCR() {
+    if (!lastExtractedText || !lastExtractedText.trim()) {
+        alert('먼저 이미지를 스캔해서 텍스트를 추출해주세요.');
+        return;
+    }
+
+    await handlePdfScanAndProcess({
+        apiEndpoint: 'summary',
+        boxClass: 'summaryBox',
+        extraPayload: { content: lastExtractedText },
+    });
+}
+
+// 🎤 오디오 파일에서 텍스트 추출
+async function getSpeechText(file) {
+    if (!file) {
+        const fileInput = document.getElementById('audioFile');
+        file = fileInput ? fileInput.files[0] : null;
+    }
+    if (!file) throw new Error('업로드할 오디오 파일이 없습니다.');
+
+    const formData = new FormData();
+    formData.append('audio', file);
+
+    const response = await fetch(`${BASE_URL}/speech`, {
+        method: 'POST',
+        body: formData,
+    });
+    const result = await response.json();
+
+    console.log('인식된 텍스트: ', result.text, '\n', result.time, '초');
+    return result.text;
+}
+
+async function speechStyle(file = null) {
+    const grammarBox = document.getElementById('grammarBox');
+    if (grammarBox) grammarBox.style.display = 'none';
+
+    const resultArea = document.getElementById('resultArea');
+    const style = document.getElementById('styleSelect').value;
+
+    try {
+        // 음성 → 텍스트 변환
+        const audio_text = await getSpeechText(file);
+
+        // 스타일 변환 요청
+        const response = await fetch(`${BASE_URL}/gptStyleChange`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: audio_text, style: style }),
+        });
+
+        const data = await response.json();
+        resultArea.innerText =
+            data.styled_text || data.error || '오류가 발생했습니다.';
+
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            pdfBtn.onclick = function () {
+                saveAsPDF(resultArea, 'speech.pdf');
+            };
+        }
+    } catch (err) {
+        alert('speechStyle 실패: ' + err.message);
+        console.error(err);
+    }
+}
+
+async function speechRewrite() {
+    const grammarBox = document.getElementById('grammarBox');
+    if (grammarBox) {
+        grammarBox.style.display = 'none';
+    }
+
+    const resultArea = document.getElementById('resultArea');
+    const fileInput = document.getElementById('audioFile');
+    const file = fileInput ? fileInput.files[0] : null;
+
+    const formData = new FormData();
+    if (file) formData.append('audio', file);
+
+    try {
+        const response = await fetch(`${BASE_URL}/speech`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        const result = await response.json();
+        audio_text = result.text;
+
+        console.log('인식된 텍스트: ', audio_text, '\n', result.time, '초');
+
+        const audioRewriteResponse = await fetch(`${BASE_URL}/mistralRewrite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: audio_text }),
+        });
+
+        const audioRewriteData = await audioRewriteResponse.json();
+        resultArea.innerText =
+            audioRewriteData.result ||
+            audioRewriteData.error ||
+            '오류가 발생했습니다.';
+
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            pdfBtn.onclick = function () {
+                saveAsPDF(resultArea, 'speech.pdf');
+            };
+        }
+    } catch (err) {
+        alert('오디오에서 텍스트 추출 실패: ' + err.message);
+        console.log(err.message);
+        return;
+    }
+}
+
+async function speechSummary(file = null) {
+    try {
+        const audio_text = await getSpeechText(file);
+
+        const response = await fetch(`${BASE_URL}/summary`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: audio_text }),
+        });
+
+        const data = await response.json();
+        document.getElementById('resultArea').innerText =
+            data.result || data.error || '오류가 발생했습니다.';
+
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            pdfBtn.onclick = function () {
+                saveAsPDF(resultArea, 'speech.pdf');
+            };
+        }
+    } catch (err) {
+        alert('speechSummary 실패: ' + err.message);
+    }
+}
+
+async function speechExpand(file = null) {
+    try {
+        const audio_text = await getSpeechText(file);
+
+        const response = await fetch(`${BASE_URL}/expand`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: audio_text }),
+        });
+
+        const data = await response.json();
+        document.getElementById('resultArea').innerText =
+            data.result || data.error || '오류가 발생했습니다.';
+
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            pdfBtn.onclick = function () {
+                saveAsPDF(resultArea, 'speech.pdf');
+            };
+        }
+    } catch (err) {
+        alert('speechExpand 실패: ' + err.message);
+    }
+}
+
+async function speechHonorific(file = null) {
+    try {
+        const audio_text = await getSpeechText(file);
+
+        const response = await fetch(`${BASE_URL}/cohereHonorific`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: audio_text }),
+        });
+
+        const data = await response.json();
+        document.getElementById('resultArea').innerText =
+            data.result || data.error || '오류가 발생했습니다.';
+
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            pdfBtn.onclick = function () {
+                saveAsPDF(resultArea, 'speech.pdf');
+            };
+        }
+    } catch (err) {
+        alert('speechHonorific 실패: ' + err.message);
+    }
+}
+
+// 반말 변환
+async function speechInformal(file = null) {
+    try {
+        const audio_text = await getSpeechText(file);
+
+        const response = await fetch(`${BASE_URL}/cohereInformal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: audio_text }),
+        });
+
+        const data = await response.json();
+        document.getElementById('resultArea').innerText =
+            data.result || data.error || '오류가 발생했습니다.';
+
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            pdfBtn.onclick = function () {
+                saveAsPDF(resultArea, 'speech.pdf');
+            };
+        }
+    } catch (err) {
+        alert('speechInformal 실패: ' + err.message);
+    }
+}
+
+// 번역
+async function speechTranslate(file = null) {
+    try {
+        const audio_text = await getSpeechText(file);
+
+        const sourceLang = document.getElementById('sourceSelector').value;
+        const targetLang = document.getElementById('targetSelector').value;
+
+        const response = await fetch(`${BASE_URL}/translate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text: audio_text,
+                source: sourceLang,
+                target: targetLang,
+            }),
+        });
+
+        const data = await response.json();
+        document.getElementById('resultArea').innerText =
+            data.result || data.error || '오류가 발생했습니다.';
+
+        const pdfBtn = document.getElementById('pdfDownloadBtn');
+        if (pdfBtn) {
+            pdfBtn.onclick = function () {
+                saveAsPDF(resultArea, 'speech.pdf');
+            };
+        }
+    } catch (err) {
+        alert('speechTranslate 실패: ' + err.message);
+    }
+}
+
+let mediaRecorder;
+let recordedChunks = [];
+let lastRecordedFile = null; // 🔹 마지막 녹음 파일 저장
+
+// 🎤 녹음 시작
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+        });
+        mediaRecorder = new MediaRecorder(stream);
+
+        recordedChunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+
+            // 👉 webm → wav 변환
+            const wavBlob = await blobToWav(audioBlob);
+            const wavFile = new File([wavBlob], 'recorded_audio.wav', {
+                type: 'audio/wav',
+            });
+
+            // 🔹 녹음된 파일을 전역 변수에 저장
+            lastRecordedFile = wavFile;
+            console.log('녹음된 파일 준비 완료:', wavFile);
+        };
+
+        mediaRecorder.start();
+        console.log('녹음 시작');
+        document.getElementById('startRecord').disabled = true;
+        document.getElementById('stopRecord').disabled = false;
+    } catch (err) {
+        alert('마이크 접근 실패: ' + err.message);
+    }
+}
+
+// 🛑 녹음 종료
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        console.log('녹음 종료');
+        document.getElementById('startRecord').disabled = false;
+        document.getElementById('stopRecord').disabled = true;
+    }
+}
+function encodeWAV(samples, sampleRate) {
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+
+    let offset = 0;
+    writeString(view, offset, 'RIFF');
+    offset += 4;
+    view.setUint32(offset, 36 + samples.length * 2, true);
+    offset += 4;
+    writeString(view, offset, 'WAVE');
+    offset += 4;
+    writeString(view, offset, 'fmt ');
+    offset += 4;
+    view.setUint32(offset, 16, true);
+    offset += 4;
+    view.setUint16(offset, 1, true);
+    offset += 2;
+    view.setUint16(offset, 1, true);
+    offset += 2; // mono
+    view.setUint32(offset, sampleRate, true);
+    offset += 4;
+    view.setUint32(offset, sampleRate * 2, true);
+    offset += 4;
+    view.setUint16(offset, 2, true);
+    offset += 2;
+    view.setUint16(offset, 16, true);
+    offset += 2;
+    writeString(view, offset, 'data');
+    offset += 4;
+    view.setUint32(offset, samples.length * 2, true);
+    offset += 4;
+
+    for (let i = 0; i < samples.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+
+    return buffer;
+}
+
+async function blobToWav(blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioCtx = new AudioContext();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const channelData = audioBuffer.getChannelData(0);
+    const wavBuffer = encodeWAV(channelData, audioBuffer.sampleRate);
+    return new Blob([wavBuffer], { type: 'audio/wav' });
 }
