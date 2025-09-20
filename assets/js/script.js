@@ -298,7 +298,7 @@ async function mistralRewrite() {
                 '<p style="color: red;">❗ 결과가 비어 있습니다.</p>';
             return;
         }
-
+        console.log(data.result);
         const examples = data.result
             .split(/예시문(?: \d+)?:/)
             .map((text) => text.trim())
@@ -644,17 +644,33 @@ async function mistralGrammar() {
                 hasError = true;
 
                 const row = document.createElement('tr');
-
                 const tdLeft = document.createElement('td');
                 const tdRight = document.createElement('td');
                 tdRight.classList.add('right');
 
-                // tdLeft.innerHTML = `<span class="sentence">${textDiff(
-                //     cleanLine1,
-                //     cleanLine2
-                // )}</span>`;
+                tag_delete = textDiff(cleanLine1, cleanLine2);
+                del_tag_delete = tag_delete.replace(
+                    /<del[^>]*>.*?<\/del>/g,
+                    ''
+                );
+                ins_tag_delete = tag_delete.replace(
+                    /<ins[^>]*>.*?<\/ins>/g,
+                    ''
+                );
 
-                tdLeft.innerText = '❌' + cleanLine1 + '\n' + '✅' + cleanLine2;
+                tdLeft.innerHTML = `<span class="sentence">❌${ins_tag_delete}<br>✅${del_tag_delete}</span>`;
+
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    del {
+                        text-decoration: line-through;
+                        background: #ff9999 !important
+                    }
+                    ins {
+                        background: #81ff81 !important
+                    }
+                `;
+                document.head.appendChild(style);
 
                 // tdRight는 기존처럼 규칙 설명 출력
                 tdRight.textContent = lines[i + 2] + '\n' + lines[i + 3];
@@ -1298,7 +1314,28 @@ async function pdfScanGrammar() {
                 tdRight.classList.add('right');
 
                 // 원문/교정문
-                tdLeft.innerText = `❌ ${cleanLine1}\n✅ ${cleanLine2}`;
+                tag_delete = textDiff(cleanLine1, cleanLine2);
+                del_tag_delete = tag_delete.replace(
+                    /<del[^>]*>.*?<\/del>/g,
+                    ''
+                );
+                ins_tag_delete = tag_delete.replace(
+                    /<ins[^>]*>.*?<\/ins>/g,
+                    ''
+                );
+
+                tdLeft.innerHTML = `<span class="sentence">❌${ins_tag_delete}<br>✅${del_tag_delete}</span>`;
+                const style = document.createElement('style');
+                style.innerHTML = `
+                    del {
+                        text-decoration: line-through;
+                        background: #ff9999 !important
+                    }
+                    ins {
+                        background: #81ff81 !important
+                    }
+                `;
+                document.head.appendChild(style);
                 // 규칙/설명
                 tdRight.textContent = `${rule1}\n${rule2}`;
 

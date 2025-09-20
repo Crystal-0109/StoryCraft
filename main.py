@@ -34,10 +34,9 @@ import zipfile
 import xml.etree.ElementTree as ET
 import speech_recognition as sr  # 음성인식
 from pydub import AudioSegment
-from pydub.silence import split_on_silence
 from io import BytesIO
 import imageio_ffmpeg
-from google.cloud import speech
+from hanspell import spell_checker
 
 
 load_dotenv()
@@ -53,6 +52,7 @@ ALLOW_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
     "https://hj-sp.github.io",
+    "https://crystal-0109.github.io",
 ]
 
 app.add_middleware(
@@ -211,7 +211,6 @@ async def mistral_rewrite(content: TextInput):
 
 출력 형식은 다음과 같아:
 
-예시문:
 (여기에 리라이팅된 문장)
 
 아무 설명 없이 예시문 하나만 보여줘.
@@ -776,3 +775,25 @@ async def upload_audio(audio: UploadFile = File(...)):
     print()
 
     return {"text": text, "time": round(elapsed_time, 3)}
+
+@app.post("/editorGrammar")
+async def editorGrammar(content: TextInput):
+    print(content.content)
+    print()
+
+    result = spell_checker.check(content.content)
+
+    print(f"원문        : {result.original}")
+    print(f"수정된 문장 : {result.checked}")
+    print(f"오류 수     : {result.errors}")
+    print(f"단어별 상태 : {list(result.words.keys())}")
+    print(f"검사 시간   : {result.time:.4f}초")
+    print("-" * 40)
+
+    return {
+        "original": result.original,
+        "checked": result.checked,
+        "errors": result.errors,
+        # "words": list(result.words.keys()),
+        "time": result.time,
+    }

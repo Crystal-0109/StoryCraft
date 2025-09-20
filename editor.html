@@ -2,7 +2,7 @@
 <html lang="ko">
     <head>
         <meta charset="utf-8" />
-        <title>StoryCraft Editor (Solo)</title>
+        <title>StoryCraft Editor</title>
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <meta name="description" content="" />
         <meta name="keywords" content="" />
@@ -50,7 +50,10 @@
                 --bg: #f7f7fb;
                 --card: #fff;
                 --muted: #666;
-                --border: #e9e9ef;
+                --border: #e5e7eb;
+                --accent: #4f46e5; /* 주요 버튼 색 */
+                --accent-2: #10b981;
+                --text-strong: #1f2937;
             }
             body {
                 margin: 0;
@@ -58,11 +61,18 @@
                     Apple Color Emoji, Segoe UI Emoji, sans-serif;
                 background: var(--bg);
             }
+
+            /* ===== Layout ===== */
             .wrap {
                 display: grid;
-                grid-template-columns: 1fr 320px;
+                grid-template-columns: minmax(0, 1fr) 320px;
                 gap: 16px;
                 padding: 20px;
+            }
+            @media (max-width: 1024px) {
+                .wrap {
+                    grid-template-columns: 1fr;
+                }
             }
             .card {
                 background: var(--card);
@@ -70,22 +80,171 @@
                 border-radius: 16px;
                 box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
             }
+
+            /* ===== Editor Card ===== */
+            .editor-card {
+                display: flex;
+                flex-direction: column;
+            }
             .toolbar {
-                border-bottom: 1px solid var(--border);
-                padding: 8px 12px;
+                padding: 0;
+                border: 0;
+            }
+            #quill-toolbar.ql-toolbar.ql-snow {
+                border: 1px solid var(--border);
+                border-bottom: 0;
+                border-radius: 12px 12px 0 0;
+                padding: 8px 10px;
+            }
+
+            #quill .ql-container.ql-snow {
+                border: 1px solid var(--border);
+                border-top: 0;
+                border-radius: 0 0 12px 12px;
+                overflow: hidden;
             }
             .editor {
                 min-height: 520px;
+            }
+            #quill .ql-editor {
+                padding: 14px 16px;
+            }
+
+            .editor-card .footer {
+                border-top: 0;
+                padding: 8px 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            #resultArea:empty {
+                display: none;
+            }
+            .spinner {
+                display: none;
+                font-size: 12px;
+                color: #444;
             }
             .side {
                 padding: 16px;
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 14px;
             }
             .side h3 {
                 margin: 0 0 6px;
                 font-size: 16px;
+            }
+            .panel {
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                padding: 12px;
+            }
+            .panel + .panel {
+                margin-top: 2px;
+            }
+
+            .panel-title {
+                font-size: 12px;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: #8a8fa3;
+                font-weight: 800;
+                margin-bottom: 10px;
+            }
+            .grid-2 {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .grid-1 {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .sc-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                height: 40px;
+                padding: 0 14px;
+                border-radius: 10px;
+                border: 1px solid var(--border);
+                font-weight: 700;
+                letter-spacing: 0.2px;
+                background: #fff;
+                color: var(--text-strong);
+                cursor: pointer;
+                transition: box-shadow 0.15s ease, transform 0.02s ease,
+                    background 0.15s ease;
+                user-select: none;
+            }
+            .sc-btn:hover {
+                background: #f7f8fb;
+            }
+            .sc-btn:active {
+                transform: translateY(1px);
+            }
+            .sc-btn:focus-visible {
+                outline: 2px solid transparent;
+                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+            }
+            .sc-btn--primary {
+                background: var(--accent);
+                color: #fff;
+                border-color: transparent;
+            }
+            .sc-btn--primary:hover {
+                filter: brightness(1.05);
+            }
+            .sc-btn--secondary {
+                border-color: #d7daf0;
+                background: #fff;
+            }
+            .sc-btn--secondary:hover {
+                background: #f5f7ff;
+            }
+
+            .sc-select {
+                height: 40px;
+                padding: 0 38px 0 12px;
+                border: 1.5px solid #d7daf0;
+                border-radius: 10px;
+                background: #fff;
+                color: #111827;
+                font-weight: 600;
+                appearance: none;
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                background-image: url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%238b90a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                background-size: 18px 18px;
+            }
+            .sc-select:hover {
+                border-color: #bfc6ee;
+            }
+            .sc-select:focus {
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+                border-color: var(--accent);
+            }
+
+            .row,
+            .grid-2,
+            .grid-1 {
+            }
+            .row > .sc-btn,
+            .row > .sc-select,
+            .grid-2 > .sc-btn,
+            .grid-2 > .sc-select,
+            .grid-1 > .sc-btn,
+            .grid-1 > .sc-select {
+                width: 100%;
             }
             .btn {
                 padding: 10px 12px;
@@ -98,31 +257,30 @@
             .btn:hover {
                 background: #fafafa;
             }
-            .row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
+
+            /* === Quill 박스 위/아래 모서리 통일 + 풋터 라인 제거 (강제 오버라이드) === */
+            .toolbar {
+                padding: 0 !important;
+                border: 0 !important;
+            } /* 툴바 폭 맞추기 */
+
+            #quill-toolbar.ql-toolbar.ql-snow {
+                border: 1px solid var(--border) !important; /* 툴바에 보더 부여 */
+                border-bottom: 0 !important; /* 아래는 입력창과 접합 */
+                border-radius: 12px 12px 0 0 !important; /* 위쪽 둥근 모서리 */
             }
-            .muted {
-                color: var(--muted);
-                font-size: 12px;
+
+            #quill .ql-container.ql-snow {
+                border: 1px solid var(--border) !important; /* 입력창에도 같은 보더 */
+                border-top: 0 !important; /* 위는 툴바와 접합 */
+                border-radius: 0 0 12px 12px !important; /* ↓ 아래도 둥글게 */
+                overflow: hidden !important; /* 둥근 모서리 깨끗하게 */
             }
-            .spinner {
-                display: none;
-                font-size: 12px;
-                color: #444;
-            }
+
+            .editor-card .footer,
             .footer {
-                padding: 8px 12px;
-                border-top: 1px solid var(--border);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            @media (max-width: 1024px) {
-                .wrap {
-                    grid-template-columns: 1fr;
-                }
+                border-top: 0 !important; /* 입력창 바로 아래 직선 제거 */
+                /* 필요하면 간격 살짝: margin-top: 8px; */
             }
         </style>
     </head>
@@ -164,7 +322,7 @@
         </header>
         <div class="wrap">
             <!-- 에디터 카드 -->
-            <div class="card">
+            <div class="card editor-card">
                 <div class="toolbar">
                     <div id="quill-toolbar">
                         <span class="ql-formats">
@@ -206,25 +364,6 @@
                     class="card"
                     style="margin-top: 12px; padding: 12px"
                 ></div>
-                <div
-                    style="
-                        display: flex;
-                        gap: 8px;
-                        align-items: center;
-                        margin-top: 8px;
-                    "
-                >
-                    <span id="loadingSpinner" style="display: none"
-                        >⏳ 처리 중…</span
-                    >
-                    <button
-                        id="pdfDownloadBtn"
-                        class="btn btn-outline"
-                        type="button"
-                    >
-                        🖨️ PDF 저장
-                    </button>
-                </div>
 
                 <!-- 공용 스크립트가 읽는 입력값(Quill↔공용 함수 연결용) -->
                 <textarea id="userInput" style="display: none"></textarea>
@@ -234,18 +373,12 @@
 
             <!-- 사이드 툴 패널 -->
             <div class="card side">
-                <h3>StoryCraft Tools</h3>
-
-                <!-- 번역 & 가져오기 -->
-                <div class="tool-section">
-                    <p class="section-title">Translate & Import</p>
-
-                    <!-- 원본/대상 언어: translate.html과 동일한 옵션 유지 -->
-                    <div class="row" style="gap: 6px; align-items: center">
-                        <!-- 원본 언어 선택 -->
+                <section class="panel">
+                    <div class="panel-title">Translate & Import</div>
+                    <div class="grid-2" style="margin-bottom: 8px">
                         <select
                             id="sourceSelector"
-                            class="btn btn-ghost"
+                            class="sc-select"
                             title="원본 언어"
                         >
                             <option value="auto" selected>자동 감지</option>
@@ -286,7 +419,7 @@
                         <!-- 대상 언어 선택 -->
                         <select
                             id="targetSelector"
-                            class="btn btn-ghost"
+                            class="sc-select"
                             title="대상 언어"
                         >
                             <option value="gu">구자라트어</option>
@@ -324,61 +457,98 @@
                         </select>
                     </div>
 
-                    <div class="row" style="margin-top: 8px">
-                        <button class="btn btn-outline" id="btn-translate">
+                    <div class="grid-1">
+                        <button
+                            class="sc-btn sc-btn--primary"
+                            id="btn-translate"
+                        >
                             🌐 번역
                         </button>
                     </div>
-                </div>
+                </section>
 
                 <div class="hr"></div>
 
                 <!-- 문체 & 톤 -->
-                <div class="tool-section">
-                    <p class="section-title">Style & Tone</p>
-
-                    <!-- 문체 선택: change-style.html과 동일 옵션 유지 -->
-                    <div class="row" style="gap: 6px">
+                <section class="panel">
+                    <div class="panel-title">Style & Tone</div>
+                    <div class="grid-2" style="margin-bottom: 8px">
                         <select
                             id="styleSelector"
-                            class="btn btn-ghost"
+                            class="sc-select"
                             title="문체 선택"
                         >
                             <option value="casual">구어체</option>
-                            <option value="formal" selected>격식체</option>
+                            <option value="formal">격식체</option>
                             <option value="literary">문학체</option>
                             <option value="academic">학술체</option>
                         </select>
-                        <button class="btn btn-outline" id="btn-style">
+                        <button
+                            class="sc-btn sc-btn--secondary"
+                            id="btn-style"
+                            onclick="applyStyle()"
+                        >
                             ✒️ 문체변경
                         </button>
                     </div>
 
-                    <div class="row" style="margin-top: 8px">
-                        <button class="btn" id="btn-honorific">
+                    <div class="grid-2">
+                        <button class="sc-btn" id="btn-honorific">
                             🙇 높임말
                         </button>
-                        <button class="btn" id="btn-informal">🙂 반말</button>
+                        <button class="sc-btn" id="btn-informal">
+                            🙂 반말
+                        </button>
                     </div>
-                </div>
+                </section>
 
                 <div class="hr"></div>
 
                 <!-- 첨삭/요약/확장 -->
-                <div class="tool-section">
-                    <p class="section-title">Rewrite & Summarize</p>
-                    <div class="row">
-                        <button class="btn btn-primary" id="btn-rewrite">
+                <section class="panel">
+                    <div class="panel-title">Rewrite & Summary</div>
+                    <div class="grid-2" style="margin-bottom: 8px">
+                        <button
+                            class="sc-btn sc-btn--secondary"
+                            id="btn-rewrite"
+                        >
                             🛠️ 첨삭
                         </button>
-                        <button class="btn btn-outline" id="btn-summary">
+                        <button
+                            class="sc-btn sc-btn--secondary"
+                            id="btn-summary"
+                        >
                             🧾 요약
                         </button>
                     </div>
-                    <div class="row" style="margin-top: 8px">
-                        <button class="btn" id="btn-expand">➕ 확장</button>
+                    <div class="grid-1">
+                        <button class="sc-btn" id="btn-expand">➕ 확장</button>
                     </div>
-                </div>
+                </section>
+                <!-- 문법 교정 -->
+                <section class="panel">
+                    <div class="panel-title">Grammar</div>
+                    <div class="grid-1">
+                        <button
+                            class="sc-btn sc-btn--secondary"
+                            id="btn-grammar"
+                        >
+                            ✔️ 문법 교정
+                        </button>
+                    </div>
+                </section>
+
+                <section class="panel sticky">
+                    <div class="panel-title">Export</div>
+                    <div class="grid-1">
+                        <button
+                            class="sc-btn sc-btn--secondary"
+                            id="pdfDownloadBtn"
+                        >
+                            ⬇️ PDF로 저장
+                        </button>
+                    </div>
+                </section>
             </div>
         </div>
 
@@ -481,17 +651,20 @@
 
             async function doStyle() {
                 const content = getEditorText().trim();
+                const style = document.getElementById('styleSelector').value;
+
                 if (!content) {
                     alert('내용을 입력하세요.');
                     return;
                 }
                 showSpin(true);
+
                 try {
-                    const data = await postJSON(`${BASE_URL}/changeStyle`, {
-                        content,
-                        style: '공손체',
+                    const data = await postJSON(`${BASE_URL}/gptStyleChange`, {
+                        text: content,
+                        style: style,
                     }); // 필요 파라미터 맞춰 수정
-                    setEditorText((data.result || '').trim());
+                    setEditorText((data.styled_text || '').trim());
                 } catch (e) {
                     alert('문체변경 실패: ' + e.message);
                 } finally {
@@ -507,7 +680,7 @@
                 }
                 showSpin(true);
                 try {
-                    const data = await postJSON(`${BASE_URL}/honorific`, {
+                    const data = await postJSON(`${BASE_URL}/cohereHonorific`, {
                         content,
                     });
                     setEditorText((data.result || '').trim());
@@ -526,7 +699,7 @@
                 }
                 showSpin(true);
                 try {
-                    const data = await postJSON(`${BASE_URL}/informal`, {
+                    const data = await postJSON(`${BASE_URL}/cohereInformal`, {
                         content,
                     });
                     setEditorText((data.result || '').trim());
@@ -579,6 +752,24 @@
                     await uploadTo(`${BASE_URL}/fileScan`, form, 'text');
                 }
             }
+            async function doGrammar() {
+                const content = getEditorText().trim();
+                if (!content) {
+                    alert('내용을 입력하세요.');
+                    return;
+                }
+                showSpin(true);
+                try {
+                    const data = await postJSON(`${BASE_URL}/editorGrammar`, {
+                        content,
+                    });
+                    setEditorText((data.checked || '').trim());
+                } catch (e) {
+                    alert('문법 교정 실패: ' + e.message);
+                } finally {
+                    showSpin(false);
+                }
+            }
             async function uploadTo(url, form, expectField = 'text') {
                 showSpin(true);
                 try {
@@ -606,14 +797,17 @@
             }
 
             // ===== 4) 버튼 바인딩 =====
-            document.getElementById('btn-rewrite').onclick = doRewrite;
-            document.getElementById('btn-summary').onclick = doSummary;
-            document.getElementById('btn-expand').onclick = doExpand;
-            document.getElementById('btn-style').onclick = doStyle;
-            document.getElementById('btn-honorific').onclick = doHonorific;
-            document.getElementById('btn-informal').onclick = doInformal;
-            document.getElementById('btn-translate').onclick = doTranslate;
-            document.getElementById('btn-ocr').onclick = doOCRorFile;
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('btn-rewrite').onclick = doRewrite;
+                document.getElementById('btn-summary').onclick = doSummary;
+                document.getElementById('btn-expand').onclick = doExpand;
+                document.getElementById('btn-style').onclick = doStyle;
+                document.getElementById('btn-honorific').onclick = doHonorific;
+                document.getElementById('btn-informal').onclick = doInformal;
+                document.getElementById('btn-translate').onclick = doTranslate;
+                document.getElementById('btn-grammar').onclick = doGrammar;
+                document.getElementById('btn-ocr').onclick = doOCRorFile;
+            });
         </script>
 
         <!-- Preloader -->
@@ -631,5 +825,21 @@
         <script src="assets/js/script.js"></script>
         <script src="assets/js/main.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.js"></script>
+        <script>
+            (function () {
+                function setHeaderH() {
+                    var h =
+                        (document.getElementById('header') || {})
+                            .offsetHeight || 64;
+                    document.documentElement.style.setProperty(
+                        '--header-h',
+                        h + 'px'
+                    );
+                }
+                window.addEventListener('load', setHeaderH);
+                window.addEventListener('resize', setHeaderH);
+                setHeaderH();
+            })();
+        </script>
     </body>
 </html>
