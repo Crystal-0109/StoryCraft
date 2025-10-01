@@ -38,7 +38,6 @@ from io import BytesIO
 import imageio_ffmpeg
 from hanspell import spell_checker
 
-
 load_dotenv()
 
 app = FastAPI()
@@ -51,6 +50,8 @@ ALLOW_ORIGINS = [
     "http://localhost:5500",
     "http://127.0.0.1:3000",
     "http://localhost:3000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
     "https://hj-sp.github.io",
     "https://crystal-0109.github.io",
 ]
@@ -191,6 +192,13 @@ async def gpt_style_change(request: Request):
             temperature=0.7
         )
         output = completion.choices[0].message.content
+        print(output)
+
+        # 글 앞 뒤 따옴표 제거
+        output = output[1:-1] if len(
+            output) >= 2 and output[0] == output[-1] and output[0] in ('"', "'") else output
+        print(output)
+
         return {"styled_text": output}
     except Exception as e:
         return {"error": f"GPT 호출 오류: {str(e)}"}
@@ -797,3 +805,43 @@ async def editorGrammar(content: TextInput):
         # "words": list(result.words.keys()),
         "time": result.time,
     }
+@app.post("/promptChange")
+async def expand(request: Request):
+    body = await request.json()
+
+    content = body.get('content')
+    prompt = body.get('prompt')
+    print(content)
+    print(prompt)
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "당신은 글을 수정해주는 작문 보조 도구입니다."},
+            {"role": "user", "content": f"{content}위의 글을 아래 프롬프트에 맞게 수정해줘.\n\n{prompt}"}
+        ]
+    )
+    message = response.choices[0].message.content
+    return {"result": message}
+
+@app.post("/promptAdd")
+async def expand(request: Request):
+    body = await request.json()
+
+    before = body.get('before')
+    after = body.get('after')
+    prompt = body.get('prompt')
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "당신은 글을 수정해주는 작문 보조 도구입니다."},
+            {"role": "user", "content": f"현재 커서 전의 글: {before}\n\n현재 커서 이후의 글: {after}\n\n현재 커서를 기준으로 분리한 글들을 아래 프롬프트에 맞게 수정해줘. 결과는 추가할 글만 알려줘.\n\n{prompt}"}
+        ]
+    )
+    message = response.choices[0].message.content
+
+    # 글 앞 뒤 따옴표 제거
+    message = message[1:-1] if len(
+        message) >= 2 and message[0] == message[-1] and message[0] in ('"', "'") else message
+    print(message)
+    return {"result": message}
