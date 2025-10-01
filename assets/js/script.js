@@ -133,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startRecord) {
         startRecord.addEventListener('click', (e) => {
             e.preventDefault();
+            console.log('startRecord 있음');
             startRecording();
         });
     }
@@ -416,6 +417,7 @@ async function applyStyle() {
             body: JSON.stringify({ text, style }),
         });
         const data = await response.json();
+
         result.innerText =
             data.styled_text || data.error || '오류가 발생했습니다.';
 
@@ -635,6 +637,8 @@ async function mistralGrammar() {
             for (let i = 0; i < lines.length; i += 4) {
                 const cleanLine1 = removeIcons(lines[i]);
                 const cleanLine2 = removeIcons(lines[i + 1]);
+                const cleanLine3 = removeIcons(lines[i + 2]);
+                const cleanLine4 = removeIcons(lines[i + 3]);
 
                 if (cleanLine1 === cleanLine2) {
                     // 맞는 문장이면 기록하지 않고 넘어감
@@ -673,7 +677,7 @@ async function mistralGrammar() {
                 document.head.appendChild(style);
 
                 // tdRight는 기존처럼 규칙 설명 출력
-                tdRight.textContent = lines[i + 2] + '\n' + lines[i + 3];
+                tdRight.textContent = '📖 ' + cleanLine3 + '\n✍️ ' + cleanLine4;
 
                 row.appendChild(tdLeft);
                 row.appendChild(tdRight);
@@ -1007,7 +1011,7 @@ window.isImageFile = function (file) {
 window.extractTextFromAnyFile = async function (file) {
     if (!file) throw new Error('파일이 없습니다.');
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', file); // 서버 /fileScan은 'file' 필드로 받음
     const res = await fetch(`${BASE_URL}/fileScan`, {
         method: 'POST',
         body: fd,
@@ -1020,10 +1024,12 @@ window.extractTextFromAnyFile = async function (file) {
     return (js.text || '').toString();
 };
 
+// 업로더에서 파일 하나만 꺼내오기 (image.html/scan.html 겸용)
 function getSelectedFile() {
     const any = document.getElementById('fileAny');
     if (any && any.files && any.files[0]) return any.files[0];
 
+    // 예전 id 호환 (혹시 남아있다면)
     const img = document.getElementById('imageFile');
     if (img && img.files && img.files[0]) return img.files[0];
 
@@ -1033,9 +1039,10 @@ function getSelectedFile() {
     return null;
 }
 
+// 이미지 파일 여부 판별
 function isImageFile(file) {
     if (!file) return false;
-
+    // MIME 우선, 없으면 확장자 판별
     const mime = (file.type || '').toLowerCase();
     const name = (file.name || '').toLowerCase();
     return (
@@ -1057,7 +1064,7 @@ async function handlePdfScanAndProcess({
     if (file) {
         if (isImageFile(file)) {
             const fd = new FormData();
-            fd.append('image', file);
+            fd.append('image', file); // /visionOCR는 'image'로 받음
             const res = await fetch(`${BASE_URL}/visionOCR`, {
                 method: 'POST',
                 body: fd,
@@ -1065,7 +1072,7 @@ async function handlePdfScanAndProcess({
             const js = await res.json();
             extractedText = (js.text || js.result || '').toString();
         } else {
-            extractedText = await extractTextFromAnyFile(file);
+            extractedText = await extractTextFromAnyFile(file); // ← 여기서 전역 함수 사용
         }
         window.lastExtractedText = extractedText;
     }
@@ -1116,7 +1123,7 @@ async function handlePdfScanAndProcess({
         if (apiEndpoint === 'gptStyleChange') {
             requestBody = { text: extractedText, ...extraPayload };
         } else if (apiEndpoint === 'translate') {
-            requestBody = { text: extractedText, ...extraPayload };
+            requestBody = { text: extractedText, ...extraPayload }; // 번역은 text로 통일
         } else {
             requestBody = { content: extractedText, ...extraPayload };
         }
@@ -1129,7 +1136,7 @@ async function handlePdfScanAndProcess({
         const data = await apiResponse.json();
         const resultText = data[resultKey];
 
-        console.log('📦 API 응답 데이터 전체:', data);
+        console.log('📦 API 응답 데이터 전체:', data); // ✅ 전체 응답 확인
         console.log('📌 추출된 resultText:', resultText);
 
         resultArea.innerHTML = '';
@@ -1219,11 +1226,13 @@ async function pdfScanGrammar() {
         document.getElementById('ocrResult');
     const spinner = document.getElementById('loadingSpinner');
 
+    // 초기화
     if (tbody) while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
     if (resultArea) resultArea.textContent = '';
     if (grammarBox) grammarBox.style.display = 'none';
     if (spinner) spinner.style.display = 'block';
 
+    // 0) 웜업(콜드스타트/프리플라이트 완화용)
     try {
         await fetch(`${BASE_URL}/whoami`, { cache: 'no-store' });
     } catch {}
@@ -1265,7 +1274,8 @@ async function pdfScanGrammar() {
         return;
     }
 
-    const MAX_LEN = 8000;
+    // 2) 프록시/모델 한도 보호: 길이 제한
+    const MAX_LEN = 8000; // 필요 시 조정
     if (sourceText.length > MAX_LEN) {
         console.warn('⚠️ 길이가 길어 앞부분만 전송합니다:', MAX_LEN);
         sourceText = sourceText.slice(0, MAX_LEN);
@@ -1274,10 +1284,11 @@ async function pdfScanGrammar() {
     try {
         const resp = await fetch(`${BASE_URL}/mistralGrammar`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' }, // JSON이면 프리플라이트 발생
             body: JSON.stringify({ content: sourceText }),
         });
 
+        // 프록시가 만든 응답(413/502 등)은 CORS 헤더가 없어 CORS처럼 보입니다
         if (!resp.ok) {
             const txt = await resp.text().catch(() => '');
             throw new Error(
@@ -1389,7 +1400,7 @@ async function pdfScanGrammar() {
         }
     } catch (e) {
         console.error('문법 교정 실패:', e);
-
+        // CORS처럼 보이는 경우: 프록시(413/502 등)일 가능성이 큼
         if (resultArea) {
             resultArea.style.display = 'block';
             resultArea.textContent = String(e).includes('HTTP 413')
@@ -1408,6 +1419,10 @@ async function pdfScanStyle() {
     const grammarBox = document.getElementById('grammarBox');
     if (grammarBox) {
         grammarBox.style.display = 'none';
+        const resultArea =
+            document.getElementById('resultArea') ||
+            document.getElementById('ocrResult');
+        resultArea.style.display = 'block';
     }
 
     const style = document.getElementById('styleSelect').value;
@@ -1424,6 +1439,10 @@ async function pdfScanRewrite() {
     const grammarBox = document.getElementById('grammarBox');
     if (grammarBox) {
         grammarBox.style.display = 'none';
+        const resultArea =
+            document.getElementById('resultArea') ||
+            document.getElementById('ocrResult');
+        resultArea.style.display = 'block';
     }
 
     await handlePdfScanAndProcess({
@@ -1437,6 +1456,10 @@ async function pdfScanSummary() {
     const grammarBox = document.getElementById('grammarBox');
     if (grammarBox) {
         grammarBox.style.display = 'none';
+        const resultArea =
+            document.getElementById('resultArea') ||
+            document.getElementById('ocrResult');
+        resultArea.style.display = 'block';
     }
 
     await handlePdfScanAndProcess({
@@ -1449,6 +1472,10 @@ async function pdfScanExpand() {
     const grammarBox = document.getElementById('grammarBox');
     if (grammarBox) {
         grammarBox.style.display = 'none';
+        const resultArea =
+            document.getElementById('resultArea') ||
+            document.getElementById('ocrResult');
+        resultArea.style.display = 'block';
     }
 
     await handlePdfScanAndProcess({
@@ -1461,6 +1488,10 @@ async function pdfScanHonorific() {
     const grammarBox = document.getElementById('grammarBox');
     if (grammarBox) {
         grammarBox.style.display = 'none';
+        const resultArea =
+            document.getElementById('resultArea') ||
+            document.getElementById('ocrResult');
+        resultArea.style.display = 'block';
     }
 
     await handlePdfScanAndProcess({
@@ -1473,6 +1504,10 @@ async function pdfScanInformal() {
     const grammarBox = document.getElementById('grammarBox');
     if (grammarBox) {
         grammarBox.style.display = 'none';
+        const resultArea =
+            document.getElementById('resultArea') ||
+            document.getElementById('ocrResult');
+        resultArea.style.display = 'block';
     }
 
     await handlePdfScanAndProcess({
@@ -1485,6 +1520,10 @@ async function pdfScanTranslate() {
     const grammarBox = document.getElementById('grammarBox');
     if (grammarBox) {
         grammarBox.style.display = 'none';
+        const resultArea =
+            document.getElementById('resultArea') ||
+            document.getElementById('ocrResult');
+        resultArea.style.display = 'block';
     }
 
     const sourceLang = document.getElementById('sourceSelector').value;
@@ -1563,6 +1602,7 @@ function highlightDiffWithType(original, revised) {
             );
             i++;
         } else if (op === 1) {
+            // 삽입 단독 (del 없이 add만 있을 경우)
             const prefix = text.match(/^\s*/)[0];
             const suffix = text.match(/\s*$/)[0];
             const cleanText = text.trim();
@@ -1596,7 +1636,7 @@ function saveAsPDF(content, filename = 'converted.pdf') {
 
     html2pdf()
         .set({
-            margin: [10, 10, 10, 10],
+            margin: [10, 10, 10, 10], // 여백 mm
             filename: filename,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
@@ -1618,6 +1658,7 @@ async function performOCR() {
     if (resultArea) resultArea.textContent = '';
     if (spinner) spinner.style.display = 'block';
 
+    // 0) 웜업(콜드스타트/프리플라이트 완화)
     try {
         await fetch(`${BASE_URL}/whoami`, { cache: 'no-store' });
     } catch {}
@@ -1629,8 +1670,9 @@ async function performOCR() {
 
         if (file) {
             if (isImageFile(file)) {
+                // ✅ 이미지 → /visionOCR
                 const fd = new FormData();
-                fd.append('image', file);
+                fd.append('image', file); // 이미지일 때는 'image' 필드명으로!
                 const res = await fetch(`${BASE_URL}/visionOCR`, {
                     method: 'POST',
                     body: fd,
@@ -1644,16 +1686,19 @@ async function performOCR() {
                 const js = await res.json();
                 extractedText = (js.text || js.result || '').toString();
             } else {
+                // ✅ 문서 → /fileScan
                 extractedText = await extractTextFromAnyFile(file);
             }
-            window.lastExtractedText = extractedText;
+            window.lastExtractedText = extractedText; // 후속 버튼(요약/번역/문체 등)을 위해 저장
         } else if (window.lastExtractedText) {
+            // 파일 없이도 직전 스캔 결과를 재활용(이미지든 문서든 동일)
             extractedText = window.lastExtractedText;
         } else {
             alert('이미지 또는 문서를 먼저 업로드해 주세요.');
             return;
         }
 
+        // 화면 출력(페이지 구조에 맞게)
         if (resultArea) {
             resultArea.textContent =
                 extractedText || '[텍스트를 추출하지 못했습니다]';
