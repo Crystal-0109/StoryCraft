@@ -778,8 +778,9 @@ async def upload_audio(audio: UploadFile = File(...)):
 
     elapsed_time = time.time() - start_time
 
-    print("\n" + text + "\n")
-    print(round(elapsed_time, 3))
+    if (text):
+        print("\n" + text + "\n")
+    print(f"걸린 시간: {elapsed_time:.3f}초")
     print()
 
     return {"text": text, "time": round(elapsed_time, 3)}
