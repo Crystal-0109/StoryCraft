@@ -244,6 +244,13 @@ document.addEventListener('DOMContentLoaded', () => {
             doOCRorFile();
         });
     }
+    const imagepromptchange = document.getElementById('image-prompt-change');
+    if (imagepromptchange) {
+        imagepromptchange.addEventListener('click', (e) => {
+            e.preventDefault();
+            imagePromptChange();
+        });
+    }
 });
 
 async function searchExample() {
@@ -2197,6 +2204,7 @@ async function blobToWav(blob) {
     return new Blob([wavBuffer], { type: 'audio/wav' });
 }
 
+let quill2 = null; // 에디터 텍스트 추출 에디터, 전역(또는 함수 바깥)에 선언
 document.addEventListener('DOMContentLoaded', () => {
     const $editspinner = document.getElementById('edit_spinner');
 
@@ -2445,9 +2453,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openModal(text) {
-        const { modal, txtArea } = _ocrRefs();
-        if (!modal || !txtArea) return;
-        txtArea.value = (text || '').toString();
+        const { modal } = _ocrRefs();
+        if (!modal) return;
+        // txtArea.value = (text || '').toString();
         modal.setAttribute('aria-hidden', 'false');
 
         // ▼ 추가: 모달 열릴 때 상단 메뉴바 숨김 + 이미지 메뉴 닫기
@@ -2455,7 +2463,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const imgMenu = document.getElementById('imgMenu');
         if (imgMenu) imgMenu.setAttribute('aria-hidden', 'true');
 
-        setTimeout(() => txtArea.focus(), 0);
+        // setTimeout(() => txtArea.focus(), 0);
+        setTimeout(() => quill2.focus(), 0);
     }
 
     function closeModal() {
@@ -2464,6 +2473,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ▼ 추가: 모달 닫힐 때 메뉴바 복구
         document.documentElement.classList.remove('is-ocr-open');
+
+        // 모달 닫을 때 프롬프트에 적은 텍스트 지우기
+        const textarea = document.getElementById('imagePromptText');
+        if (textarea) {
+            textarea.value = ''; // 텍스트 지우기
+        }
     }
 
     // (선택) 스피너 유틸
@@ -2499,9 +2514,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('#ocrInsert')) {
             e.preventDefault();
             if (!window.quill) return;
-            const { txtArea } = _ocrRefs();
+            // const { txtArea } = _ocrRefs();
             const q = window.quill;
-            const text = (txtArea?.value || '').toString();
+            // const text = (txtArea?.value || '').toString();
+            const text = (quill2.getText() || '').toString();
             const range = __insertRange ||
                 q.getSelection(true) || {
                     index: q.getLength(),
@@ -2516,7 +2532,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ③ 이미지 추출
         if (e.target.closest('#imgMenu-ocr')) {
-            const { fileIn, txtArea } = _ocrRefs();
+            // 에디터 초기화 (이미 만들어졌으면 재생성하지 않음)
+            if (!quill2) {
+                quill2 = new Quill('#quill2', {
+                    theme: 'snow',
+                    placeholder: '여기에 문서를 작성하세요…',
+                    modules: { toolbar: false }, // 툴바 제거
+                });
+            }
+
+            const { fileIn } = _ocrRefs();
             const file = fileIn?.files?.[0];
             if (!file) {
                 openModal('먼저 파일을 선택해 주세요.');
@@ -2524,7 +2549,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             openModal('추출 중… 잠시만요.');
-            if (txtArea) txtArea.disabled = true;
+            // if (txtArea) txtArea.disabled = true;
             spin(true);
 
             try {
@@ -2585,15 +2610,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const refs = _ocrRefs();
-                if (refs.txtArea)
-                    refs.txtArea.value = (out || '').toString().trim();
+                // if (refs.txtArea)
+                //     refs.txtArea.value = (out || '').toString().trim();
+
+                quill2.setText(out);
             } catch (err) {
                 const refs = _ocrRefs();
-                if (refs.txtArea) refs.txtArea.value = '';
+                // if (refs.txtArea) refs.txtArea.value = '';
                 alert('이미지 추출 실패: ' + (err?.message || err));
             } finally {
                 const refs = _ocrRefs();
-                if (refs.txtArea) refs.txtArea.disabled = false;
+                // if (refs.txtArea) refs.txtArea.disabled = false;
                 spin(false);
             }
         }
@@ -2647,6 +2674,36 @@ function getQuillSelectionOrAll() {
         isAll: true,
         apply(out) {
             quill.setText(out);
+        },
+    };
+}
+
+function getQuillSelectionOrAll2() {
+    const sel = quill2.getSelection(true);
+    if (sel && sel.length > 0) {
+        const text = quill2.getText(sel.index, sel.length);
+        return {
+            text,
+            isAll: false,
+            apply(out) {
+                const attrs = quill2.getFormat(
+                    sel.index,
+                    Math.max(sel.length, 1)
+                );
+                quill2.deleteText(sel.index, sel.length, 'user');
+                quill2.insertText(sel.index, out, attrs, 'user');
+                quill2.setSelection(sel.index + out.length, 0, 'silent');
+            },
+        };
+    }
+
+    const len = quill2.getLength();
+    const text = quill2.getText(0, len);
+    return {
+        text,
+        isAll: true,
+        apply(out) {
+            quill2.setText(out);
         },
     };
 }
@@ -3092,7 +3149,97 @@ async function sendPromptChange() {
                 quill.insertText(range.index, data.result, 'user');
                 // 커서를 삽입한 텍스트 뒤로 이동
                 quill.setSelection(range.index + data.result.length, 0);
-                prompt = '';
+            } else {
+                alert('data.result가 없습니다.');
+            }
+        } catch {
+            alert('프롬프트 추가 실패: ' + e.message);
+        } finally {
+            showSpin(false);
+        }
+    } else {
+        try {
+            const data = await postJSON(`${BASE_URL}/promptChange`, {
+                content: content,
+                prompt: prompt,
+            });
+            const out = (
+                data?.result ??
+                data?.text ??
+                data?.checked ??
+                data?.styled_text ??
+                data?.translated ??
+                ''
+            ).trim();
+            if (!out) throw new Error('빈 결과');
+            apply(out);
+        } catch (e) {
+            alert('프롬프트 수정 실패: ' + e.message);
+        } finally {
+            showSpin(false);
+        }
+    }
+}
+
+async function imagePromptChange() {
+    const prompt = document.getElementById('imagePromptText').value;
+    console.log(prompt);
+
+    const range = quill2.getSelection(true); // 현재 커서 위치
+
+    const { text, apply } = getQuillSelectionOrAll2();
+    const content = (text || '').trim();
+    console.log('저장된 텍스트:', content);
+
+    const cursorPos = range.index; // 현재 커서 위치
+    const length = range.length; // 선택된 길이 (없으면 0)
+
+    // text는 이미 선택된 텍스트
+    // 전체 content에서 앞/뒤 분리
+    const before = content.substring(0, cursorPos);
+    const selected = content.substring(cursorPos, cursorPos + length);
+    const after = content.substring(cursorPos + length);
+
+    console.log('앞부분:', before);
+    console.log('선택된 부분:', selected);
+    console.log('뒷부분:', after);
+
+    const words = [
+        '커서',
+        '현재 커서',
+        '현재 커서 위치',
+        '커서 위치',
+        '커서위치',
+        '현재커서',
+        '현재 위치',
+        '현재위치',
+    ];
+
+    const hasWord = words.some((word) => prompt.includes(word));
+
+    if (!content) {
+        alert('내용을 입력하세요.');
+        return;
+    }
+    showSpin(true);
+    if (hasWord) {
+        try {
+            const response = await fetch(`${BASE_URL}/promptAdd`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    before: before,
+                    after: after,
+                    prompt: prompt,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.result) {
+                quill2.insertText(range.index, data.result, 'user');
+                // 커서를 삽입한 텍스트 뒤로 이동
+                quill2.setSelection(range.index + data.result.length, 0);
             } else {
                 alert('data.result가 없습니다.');
             }
