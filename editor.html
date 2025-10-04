@@ -427,7 +427,7 @@
                 class="img-menu__item"
                 role="menuitem"
             >
-                <i class="bi bi-file-earmark-text"></i> 이미지 추출
+                <i class="bi bi-file-earmark-text"></i> 텍스트 추출
             </button>
         </div>
         <!-- OCR 결과 팝업 -->
@@ -450,17 +450,46 @@
                         ✕
                     </button>
                 </div>
-                <div class="ocr-modal__body">
+                <!-- <div class="ocr-modal__body">
                     <textarea
                         id="ocrText"
                         class="ocr-modal__textarea"
                         placeholder="여기에 추출된 텍스트가 표시됩니다…"
                     ></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button id="ocrInsert" type="button" class="insert-btn">
-                        삽입
-                    </button>
+                </div> -->
+                <div class="editor_image_container">
+                    <div class="card editor-card">
+                        <div class="ql-frame">
+                            <div id="quill2" class="editor_quill2 editor"></div>
+                        </div>
+
+                        <!-- <textarea id="userInput2" style="display: none"></textarea>
+                        <input id="styleInput2" type="hidden" />
+                        <input id="translateInput2" type="hidden" /> -->
+                    </div>
+                    <div class="editor_image_prompt_container">
+                        <textarea
+                            id="imagePromptText"
+                            class="editor_image_prompt_input"
+                            rows="3"
+                            cols="50"
+                            placeholder="프롬프트를 입력하세요"
+                        ></textarea>
+
+                        <div>
+                            <button
+                                class="editor_image_prompt_insert"
+                                id="image-prompt-change"
+                            >
+                                ⬆
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="ocrInsert" type="button" class="insert-btn">
+                            텍스트 삽입
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
