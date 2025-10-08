@@ -1,8 +1,14 @@
-const isLocal =
-    location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const BASE_URL = isLocal
-    ? 'http://127.0.0.1:8000'
-    : 'https://storycraft-ppxj.onrender.com';
+var isLocal =
+    typeof isLocal !== 'undefined'
+        ? isLocal
+        : location.hostname === 'localhost' ||
+          location.hostname === '127.0.0.1';
+var BASE_URL =
+    typeof BASE_URL !== 'undefined'
+        ? BASE_URL
+        : isLocal
+        ? 'http://127.0.0.1:8000'
+        : 'https://storycraft-ppxj.onrender.com';
 
 // DOMContentLoaded 이벤트를 사용하여 DOM이 완전히 로드된 이후에 document.getElementById로 요소를 찾도록 수정
 document.addEventListener('DOMContentLoaded', () => {
@@ -2249,7 +2255,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    injectSizePresetBeforeInit();
+    if (typeof injectSizePresetBeforeInit === 'function') {
+        injectSizePresetBeforeInit();
+    }
 
     const quill = new Quill('#quill', {
         modules: { toolbar: '#quill-toolbar' },
@@ -2302,17 +2310,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const input = document.getElementById('ocrFile');
     const nameEl = document.getElementById('ocrFileName');
-    if (!input || !nameEl) return;
-    input.addEventListener('change', function () {
-        const file = this.files && this.files[0];
-        if (file) {
-            nameEl.textContent = file.name;
-            nameEl.hidden = false;
-        } else {
-            nameEl.textContent = '';
-            nameEl.hidden = true;
-        }
-    });
+    if (input && nameEl) {
+        input.addEventListener('change', function () {
+            const file = this.files && this.files[0];
+            if (file) {
+                nameEl.textContent = file.name;
+                nameEl.hidden = false;
+            } else {
+                nameEl.textContent = '';
+                nameEl.hidden = true;
+            }
+        });
+    }
 
     /* ========== 공통 유틸 ========== */
     const ready = (fn) =>
@@ -2648,32 +2657,97 @@ function showSpin(v) {
     if (el) el.setAttribute('aria-hidden', String(!v));
 }
 
+function getEditorSelectionText() {
+    try {
+        if (window.quill) {
+            const sel = window.quill.getSelection();
+            if (sel && sel.length > 0)
+                return window.quill.getText(sel.index, sel.length);
+        }
+        const ta = document.getElementById('quill');
+        if (ta && 'selectionStart' in ta) {
+            const { selectionStart: s, selectionEnd: e, value: v } = ta;
+            if (e > s) return v.slice(s, e);
+        }
+    } catch (e) {}
+    return '';
+}
+
+function replaceEditorSelection(text) {
+    try {
+        if (window.quill) {
+            const sel = window.quill.getSelection(true);
+            if (sel) {
+                window.quill.deleteText(sel.index, sel.length);
+                window.quill.insertText(sel.index, text);
+                window.quill.setSelection(sel.index + text.length, 0);
+                return;
+            }
+        }
+        const ta = document.getElementById('quill');
+        if (ta && 'selectionStart' in ta) {
+            const s = ta.selectionStart,
+                e = ta.selectionEnd,
+                v = ta.value;
+            ta.value = v.slice(0, s) + text + v.slice(e);
+            ta.selectionStart = ta.selectionEnd = s + text.length;
+        }
+    } catch (e) {}
+}
+
+// 서버 붙이기 전까지 임시 생성기
+async function mockGenerate({ task, tone, length, extra, text }) {
+    await new Promise((r) => setTimeout(r, 350));
+    const lens = ['아주 짧게', '짧게', '중간', '길게', '아주 길게'][
+        Math.max(1, Math.min(5, length)) - 1
+    ];
+    if (task === 'summarize')
+        return `요약(${lens}/${tone}): ${text.slice(0, 120)}${
+            text.length > 120 ? '…' : ''
+        }`;
+    if (task === 'translate') return `[영문 번역 샘플/${tone}] ${text}`;
+    return `재작성(${lens}/${tone}${extra ? `, +${extra}` : ''})\n\n${text}`;
+}
+
 function getQuillSelectionOrAll() {
-    const sel = quill.getSelection(true);
-    if (sel && sel.length > 0) {
-        const text = quill.getText(sel.index, sel.length);
+    const q = window.quill;
+    if (q && typeof q.getSelection === 'function') {
+        const sel = q.getSelection(true);
+        if (sel && sel.length > 0) {
+            const text = q.getText(sel.index, sel.length);
+            return {
+                text,
+                isAll: false,
+                apply(out) {
+                    const attrs = q.getFormat(
+                        sel.index,
+                        Math.max(sel.length, 1)
+                    );
+                    q.deleteText(sel.index, sel.length, 'user');
+                    q.insertText(sel.index, out, attrs, 'user');
+                    q.setSelection(sel.index + out.length, 0, 'silent');
+                },
+            };
+        }
+        const len = q.getLength();
+        const text = q.getText(0, len);
         return {
             text,
-            isAll: false,
+            isAll: true,
             apply(out) {
-                const attrs = quill.getFormat(
-                    sel.index,
-                    Math.max(sel.length, 1)
-                );
-                quill.deleteText(sel.index, sel.length, 'user');
-                quill.insertText(sel.index, out, attrs, 'user');
-                quill.setSelection(sel.index + out.length, 0, 'silent');
+                q.setText(out);
             },
         };
     }
 
-    const len = quill.getLength();
-    const text = quill.getText(0, len);
+    // 에디터가 아직이면 아주 안전한 폴백
+    const el = document.getElementById('quill');
+    const txt = el?.innerText || el?.textContent || '';
     return {
-        text,
+        text: txt,
         isAll: true,
         apply(out) {
-            quill.setText(out);
+            if (el) el.textContent = out;
         },
     };
 }
@@ -2708,25 +2782,25 @@ function getQuillSelectionOrAll2() {
     };
 }
 
-[
-    'btn-rewrite',
-    'btn-summary',
-    'btn-expand',
-    'btn-style',
-    'btn-honorific',
-    'btn-informal',
-    'btn-translate',
-    'btn-grammar',
-].forEach((id) => {
-    const b = document.getElementById(id);
-    if (!b) return;
-    b.addEventListener('mousedown', () => {
-        window.__lastQuillRange = quill.getSelection(true);
-    });
-});
-quill.on('selection-change', (range) => {
-    window.__lastQuillRange = range;
-});
+// [
+//     'btn-rewrite',
+//     'btn-summary',
+//     'btn-expand',
+//     'btn-style',
+//     'btn-honorific',
+//     'btn-informal',
+//     'btn-translate',
+//     'btn-grammar',
+// ].forEach((id) => {
+//     const b = document.getElementById(id);
+//     if (!b) return;
+//     b.addEventListener('mousedown', () => {
+//         window.__lastQuillRange = quill.getSelection(true);
+//     });
+// });
+// quill.on('selection-change', (range) => {
+//     window.__lastQuillRange = range;
+// });
 
 async function postJSON(url, payload) {
     const res = await fetch(url, {
@@ -3271,3 +3345,943 @@ async function imagePromptChange() {
         }
     }
 }
+
+// ===== Right Drawer=====
+(function () {
+    'use strict';
+    console.log('[sc-drawer] init');
+    const dock =
+        document.getElementById('scDock') || document.querySelector('.sc-dock');
+    let OPEN_KEY = null;
+
+    function ensureDrawer() {
+        let drawer = document.getElementById('scDrawer');
+        let backdrop = document.getElementById('scDrawerBackdrop');
+        if (!drawer) {
+            backdrop = document.createElement('div');
+            backdrop.id = 'scDrawerBackdrop';
+            backdrop.className = 'sc-drawer__backdrop';
+            backdrop.hidden = true;
+
+            drawer = document.createElement('aside');
+            drawer.id = 'scDrawer';
+            drawer.className = 'sc-drawer';
+            drawer.setAttribute('aria-hidden', 'true');
+            drawer.innerHTML = `
+        <div class="sc-drawer__head">
+          <div id="scDrawerTitle" class="sc-drawer__title">AI Panel</div>
+          <button id="scDrawerClose" class="sc-drawer__close" aria-label="close">✕</button>
+        </div>
+        <div id="scDrawerBody" class="sc-drawer__body"></div>
+        <div id="scDrawerFoot" class="sc-drawer__foot"></div>
+      `;
+            (document.querySelector('.wrap') || document.body).append(
+                backdrop,
+                drawer
+            );
+        }
+        return { drawer, backdrop };
+    }
+    const { drawer, backdrop } = ensureDrawer();
+    const titleEl = document.getElementById('scDrawerTitle');
+    const bodyEl = document.getElementById('scDrawerBody');
+    const footEl = document.getElementById('scDrawerFoot');
+    const closeBtn = document.getElementById('scDrawerClose');
+
+    // 2) 템플릿
+    const TPL = {
+        prompt: {
+            title: 'AI 프롬프트',
+            body: `
+    <div id="scChat" class="sc-chat" role="application" aria-label="AI 대화">
+      <div id="scChatList" class="sc-chat__messages" aria-live="polite"></div>
+
+      <div class="sc-chat__scope" id="scChatScope">텍스트: 선택 없음 → 전체 문서</div>
+
+      <div class="sc-chat__composer">
+        <textarea id="scChatInput" placeholder="지시문을 입력하고 Enter(또는 ⌘/Ctrl+Enter)로 전송" rows="2"></textarea>
+        <button id="scChatSend" class="sc-btn-send">보내기</button>
+      </div>
+      <div class="sc-chat__hint">Shift+Enter 줄바꿈 • “커서/현재 위치” 등의 단어가 포함되면 커서 기준 삽입 모드로 처리</div>
+    </div>
+  `,
+            foot: `
+    <button id="scChatApply" class="sc-btn" disabled>마지막 응답 적용</button>
+    <button id="scChatCopy"  class="sc-btn" disabled>마지막 응답 복사</button>
+    <button id="scChatNew"   class="sc-btn">새 대화</button>
+  `,
+        },
+        translate: {
+            title: '번역',
+            body: `<div class="sc-row">
+                         <select id="sourceSelector" class="sc-input"><option value="auto">자동</option><option value="ko">Korean</option><option value="en">English</option></select>
+                         <select id="targetSelector" class="sc-input"><option value="en">English</option><option value="ko">Korean</option></select>
+                         <textarea id="translateInput" class="sc-input" placeholder="번역할 문장"></textarea>
+                         <div id="translateResult" class="sc-result" aria-live="polite"></div>
+                       </div>`,
+            foot: `<button id="scTranslateRun" class="sc-btn sc-btn--primary">번역</button>`,
+        },
+        style: {
+            title: '문체 변경',
+            body: `<div class="sc-row">
+                         <select id="styleSelector" class="sc-input">
+                           <option value="formal">격식체</option><option value="friendly">친근체</option><option value="concise">간결체</option>
+                         </select>
+                       </div>`,
+            foot: `<button id="scStyleRun" class="sc-btn sc-btn--primary">적용</button>`,
+        },
+        honorific: {
+            title: '높임말',
+            body: `<p class="sc-help">선택/전체를 경어체로 변환합니다.</p>`,
+            foot: `<button id="scHonorRun" class="sc-btn sc-btn--primary">실행</button>`,
+        },
+        informal: {
+            title: '반말',
+            body: `<p class="sc-help">선택/전체를 평어체로 변환합니다.</p>`,
+            foot: `<button id="scInformalRun" class="sc-btn sc-btn--primary">실행</button>`,
+        },
+        rewrite: {
+            title: '재작성',
+            body: `<p class="sc-help">자연스러운 표현으로 재작성합니다.</p>`,
+            foot: `<button id="scRewriteRun" class="sc-btn sc-btn--primary">재작성</button>`,
+        },
+        summary: {
+            title: '요약',
+            body: `<p class="sc-help">핵심만 압축합니다.</p>`,
+            foot: `<button id="scSummaryRun" class="sc-btn sc-btn--primary">요약</button>`,
+        },
+        expand: {
+            title: '확장',
+            body: `<p class="sc-help">내용을 더 풍부하게 확장합니다.</p>`,
+            foot: `<button id="scExpandRun" class="sc-btn sc-btn--primary">확장</button>`,
+        },
+        grammar: {
+            title: '문법 교정',
+            body: `<p class="sc-help">맞춤법/문법을 교정합니다.</p>`,
+            foot: `<button id="scGrammarRun" class="sc-btn sc-btn--primary">교정</button>`,
+        },
+    };
+
+    window.SCTPL = window.SCTPL || {};
+    window.registerTemplates =
+        window.registerTemplates ||
+        function (T) {
+            if (T && typeof T === 'object') Object.assign(window.SCTPL, T);
+        };
+    registerTemplates(TPL);
+
+    function getTitleFor(key) {
+        const btn = document.querySelector(
+            `.sc-dock__btn[data-action="${key}"]`
+        );
+        if (btn) {
+            const explicit =
+                btn.getAttribute('data-title') ||
+                btn.getAttribute('aria-label');
+            if (explicit && explicit.trim()) return explicit.trim();
+            const tip = btn.querySelector('.sc-tip');
+            if (tip && tip.textContent.trim()) return tip.textContent.trim();
+        }
+        return (TPL[key] && TPL[key].title) || 'AI Panel';
+    }
+
+    function openPanel(key = 'summary') {
+        // 1) key 정규화
+        if (!TPL || typeof TPL !== 'object') return;
+        if (!key || !TPL[key])
+            key = TPL.prompt ? 'prompt' : Object.keys(TPL)[0];
+        const tpl = (window.SCTPL && window.SCTPL[key]) || TPL[key];
+        if (!tpl) return;
+
+        // 2) DOM 참조
+        const WRAP = document.querySelector('.wrap');
+        const drawer = document.getElementById('scDrawer');
+        const backdrop = document.getElementById('scDrawerBackdrop');
+        const titleEl = document.getElementById('scDrawerTitle');
+        const bodyEl = document.getElementById('scDrawerBody');
+        const footEl = document.getElementById('scDrawerFoot');
+
+        // 3) 제목
+        const nextTitle =
+            (typeof getTitleFor === 'function' && getTitleFor(key)) ||
+            tpl.title ||
+            'AI Panel';
+        if (titleEl) titleEl.textContent = nextTitle;
+
+        // 4) 본문/푸터
+        if (bodyEl) bodyEl.innerHTML = tpl.body || '';
+        if (footEl) footEl.innerHTML = tpl.foot || '';
+
+        // 5) 열기
+        drawer?.classList.add('open');
+        drawer?.setAttribute('aria-hidden', 'false');
+        WRAP?.classList.add('with-panel');
+
+        OPEN_KEY = key;
+        if (drawer) drawer.dataset.key = key;
+        if (typeof updateDockActive === 'function') updateDockActive(key);
+        if (typeof bindHandlers === 'function') bindHandlers(key);
+
+        if (backdrop) {
+            backdrop.hidden = false;
+            requestAnimationFrame(() => backdrop.classList.add('show'));
+        }
+
+        // 디버그 로그
+        console.debug('[sc-drawer] render', {
+            key,
+            title: nextTitle,
+            hasBody: !!tpl.body,
+        });
+    }
+
+    function closePanel() {
+        const WRAP = document.querySelector('.wrap');
+        const drawer = document.getElementById('scDrawer');
+        const backdrop = document.getElementById('scDrawerBackdrop');
+        const bodyEl = document.getElementById('scDrawerBody');
+        const footEl = document.getElementById('scDrawerFoot');
+
+        drawer?.classList.remove('open');
+        drawer?.setAttribute('aria-hidden', 'true');
+        WRAP?.classList.remove('with-panel');
+
+        if (drawer) {
+            [
+                'opacity',
+                'pointer-events',
+                'transform',
+                'position',
+                'top',
+            ].forEach((p) => {
+                drawer.style.removeProperty(p);
+            });
+        }
+
+        if (bodyEl) bodyEl.innerHTML = '';
+        if (footEl) footEl.innerHTML = '';
+
+        // 상태 초기화
+        OPEN_KEY = null;
+        if (drawer && 'key' in drawer.dataset) delete drawer.dataset.key;
+
+        updateDockActive(null);
+
+        if (backdrop) {
+            backdrop.classList.remove('show');
+            setTimeout(() => (backdrop.hidden = true), 180);
+        }
+    }
+
+    function updateDockActive(key) {
+        const dock =
+            document.getElementById('scDock') ||
+            document.querySelector('.sc-dock');
+        if (!dock) return;
+        dock.querySelectorAll('.sc-dock__btn').forEach((btn) => {
+            btn.classList.remove('is-active');
+            btn.removeAttribute('aria-pressed');
+        });
+        if (!key) return;
+        const activeBtn = dock.querySelector(
+            `.sc-dock__btn[data-action="${key}"]`
+        );
+        if (activeBtn) {
+            activeBtn.classList.add('is-active');
+            activeBtn.setAttribute('aria-pressed', 'true');
+        }
+    }
+
+    function callFirst(names) {
+        for (const n of names) {
+            if (typeof window[n] === 'function') {
+                window[n]();
+                return true;
+            }
+        }
+        console.warn('[sc-drawer] no callable:', names.join(', '));
+        return false;
+    }
+    function bindHandlers(key) {
+        switch (key) {
+            case 'prompt': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+                const list = $('#scChatList');
+                const input = $('#scChatInput');
+                const send = $('#scChatSend');
+                const scope = $('#scChatScope');
+                const btnNew = $('#scChatNew');
+                const btnAp = $('#scChatApply');
+                const btnCp = $('#scChatCopy');
+
+                window.__chatSelStable = window.__chatSelStable || null;
+
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', (range) => {
+                        window.__lastQuillRange = range || {
+                            index: 0,
+                            length: 0,
+                        };
+                        if (range) window.__chatSelStable = range;
+                    });
+                }
+
+                let __chatSel = null;
+                let __apSnapSel = null;
+                let lastApplyFn = null;
+                let lastText = '';
+                let lastPlan = { mode: 'cursor' };
+                let lastFirst = false;
+
+                function updateScopeLabel() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            scope.textContent = '텍스트: 에디터 없음';
+                            return;
+                        }
+                        const sel = q.getSelection() ??
+                            window.__lastQuillRange ?? { index: 0, length: 0 };
+                        if (sel && sel.length > 0) {
+                            scope.textContent = `텍스트: 선택 ${sel.length.toLocaleString()}자`;
+                        } else {
+                            const len = Math.max(0, q.getLength() - 1);
+                            scope.textContent = `텍스트: 선택 없음 → 전체 문서(${len.toLocaleString()}자)`;
+                        }
+                    } catch {
+                        /* noop */
+                    }
+                }
+                updateScopeLabel();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateScopeLabel);
+                    window.quill.on('text-change', updateScopeLabel);
+                }
+
+                function addMsg(role, text, { typing = false } = {}) {
+                    const wrap = document.createElement('div');
+                    wrap.className =
+                        'sc-msg ' + (role === 'user' ? 'is-user' : 'is-bot');
+                    wrap.dataset.role = role;
+
+                    if (typing) {
+                        wrap.innerHTML = `<div class="sc-typing"><span></span><span></span><span></span></div>`;
+                    } else {
+                        wrap.textContent = text;
+                    }
+
+                    const meta = document.createElement('div');
+                    meta.className = 'sc-msg__meta';
+                    const ts = new Date();
+                    meta.textContent =
+                        (role === 'user' ? '나' : 'AI') +
+                        ' · ' +
+                        ts.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        });
+                    wrap.appendChild(meta);
+
+                    list.appendChild(wrap);
+                    list.scrollTop = list.scrollHeight;
+                    return wrap;
+                }
+
+                async function typeInto(el, text) {
+                    el.innerHTML = '';
+                    const frag = document.createDocumentFragment();
+                    let buf = '';
+                    const flush = () => {
+                        const s = document.createElement('span');
+                        s.textContent = buf;
+                        frag.appendChild(s);
+                        buf = '';
+                    };
+                    for (const ch of text) {
+                        buf += ch;
+                        if (buf.length >= 6) flush();
+                        await new Promise((r) => setTimeout(r, 6));
+                    }
+                    if (buf) flush();
+                    el.appendChild(frag);
+                }
+
+                async function runPromptFlow(promptText) {
+                    const q = window.quill;
+                    const cursorWords = [
+                        '커서',
+                        '현재 커서',
+                        '현재 커서 위치',
+                        '커서 위치',
+                        '커서위치',
+                        '현재커서',
+                        '현재 위치',
+                        '현재위치',
+                    ];
+                    const wantsCursor = cursorWords.some((w) =>
+                        promptText.includes(w)
+                    );
+
+                    if (!q) {
+                        try {
+                            const m = await mockGenerate({
+                                task: 'rewrite',
+                                text: promptText,
+                                tone: 'neutral',
+                                length: 3,
+                            });
+                            return { out: m, apply: () => {} };
+                        } catch (e) {
+                            return {
+                                out: `⚠️ 오류: ${e.message || e}`,
+                                apply: () => {},
+                            };
+                        }
+                    }
+
+                    const sel = q.getSelection() ||
+                        window.__lastQuillRange || { index: 0, length: 0 };
+                    const full = q.getText(0, q.getLength());
+                    const selected =
+                        sel.length > 0 ? q.getText(sel.index, sel.length) : '';
+                    const usedSel =
+                        sel && sel.length > 0
+                            ? { index: sel.index, length: sel.length }
+                            : null;
+
+                    if (wantsCursor) {
+                        const before = full.slice(0, sel.index);
+                        const after = full.slice(sel.index + sel.length);
+                        try {
+                            const r = await postJSON(`${BASE_URL}/promptAdd`, {
+                                before,
+                                after,
+                                prompt: promptText,
+                            });
+                            const out = (r?.result || r?.text || '').toString();
+                            const apply = () => {
+                                if (usedSel) {
+                                    const idx = usedSel.index;
+                                    const len = usedSel.length;
+                                    window.quill.deleteText(idx, len, 'user');
+                                    window.quill.insertText(
+                                        usedSel.index,
+                                        out,
+                                        'user'
+                                    );
+                                    window.quill.setSelection(
+                                        idx + out.length,
+                                        0,
+                                        'silent'
+                                    );
+                                } else {
+                                    window.quill.setText(out);
+                                    window.quill.setSelection(
+                                        Math.max(0, out.length - 1),
+                                        0,
+                                        'silent'
+                                    );
+                                }
+                            };
+                            return { out, apply, plan: { mode: 'cursor' } };
+                        } catch (e) {
+                            const m = await mockGenerate({
+                                task: 'rewrite',
+                                text: selected || before + after,
+                                tone: 'neutral',
+                                length: 3,
+                                extra: promptText,
+                            });
+                            return { out: m, apply: () => {} };
+                        }
+                    }
+
+                    const content = (selected || full || '').trim();
+                    try {
+                        const r = await postJSON(`${BASE_URL}/promptChange`, {
+                            content,
+                            prompt: promptText,
+                        });
+                        const out = (
+                            r?.result ||
+                            r?.text ||
+                            r?.styled_text ||
+                            r?.checked ||
+                            r?.translated ||
+                            ''
+                        ).toString();
+                        const apply = () => {
+                            if (usedSel) {
+                                const idx = usedSel.index;
+                                const len = usedSel.length;
+                                window.quill.deleteText(
+                                    usedSel.index,
+                                    usedSel.length,
+                                    'user'
+                                );
+                                window.quill.insertText(sel.index, out, 'user');
+                                window.quill.setSelection(
+                                    sel.index + out.length,
+                                    0,
+                                    'silent'
+                                );
+                            } else {
+                                window.quill.setText(out);
+                                window.quill.setSelection(
+                                    Math.max(0, out.length - 1),
+                                    0,
+                                    'silent'
+                                );
+                            }
+                        };
+                        return {
+                            out,
+                            apply,
+                            plan: usedSel
+                                ? { mode: 'selection', range: usedSel }
+                                : { mode: 'full' },
+                        };
+                    } catch (e) {
+                        const m = await mockGenerate({
+                            task: 'rewrite',
+                            text: content,
+                            tone: 'neutral',
+                            length: 3,
+                            extra: promptText,
+                        });
+                        return { out: m, apply: () => {} };
+                    }
+                }
+
+                async function sendNow() {
+                    const text = (input?.value || '').trim();
+                    if (!text) return;
+                    addMsg('user', text);
+                    input.value = '';
+                    input.style.height = 'auto';
+
+                    const botWrap = addMsg('bot', '', { typing: true });
+                    const bubble = botWrap.firstChild;
+
+                    const { out, apply, plan } = await runPromptFlow(text);
+                    lastText = out || '';
+                    lastApplyFn = typeof apply === 'function' ? apply : null;
+                    lastPlan = plan || { mode: 'cursor' };
+                    lastFirst = true;
+
+                    await typeInto(botWrap, lastText);
+                    btnAp.disabled = btnCp.disabled = !(
+                        lastText && lastText.length
+                    );
+                    list.scrollTop = list.scrollHeight;
+                }
+
+                send?.addEventListener('click', sendNow);
+                input?.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendNow();
+                    }
+                });
+                send?.addEventListener('mousedown', () => {
+                    if (window.quill) {
+                        window.__lastQuillRange =
+                            window.quill.getSelection() ||
+                            window.__lastQuillRange;
+                    }
+                });
+
+                btnAp?.addEventListener('mousedown', () => {
+                    if (window.quill) {
+                        __apSnapSel =
+                            window.quill.getSelection() || __apSnapSel;
+                        window.__chatSelStable =
+                            __apSnapSel || window.__chatSelStable;
+                    }
+
+                    if (input) {
+                        const s = input.selectionStart ?? 0;
+                        const e = input.selectionEnd ?? 0;
+                        __chatSel =
+                            e > s
+                                ? { start: s, end: e, value: input.value }
+                                : null;
+                    }
+                });
+
+                input?.addEventListener('input', () => {
+                    input.style.height = 'auto';
+                    input.style.height =
+                        Math.min(input.scrollHeight, 160) + 'px';
+                });
+                btnNew?.addEventListener('click', () => {
+                    list.innerHTML = '';
+                    input.value = '';
+                    input.style.height = 'auto';
+                    lastText = '';
+                    lastApplyFn = null;
+                    btnAp.disabled = btnCp.disabled = true;
+                    input.focus();
+                });
+                btnCp?.addEventListener('click', async () => {
+                    if (!lastText) return;
+                    await navigator.clipboard.writeText(lastText);
+                    btnCp.textContent = '복사됨';
+                    setTimeout(
+                        () => (btnCp.textContent = '마지막 응답 복사'),
+                        1200
+                    );
+                });
+
+                btnAp?.addEventListener('click', () => {
+                    if (!lastText) return;
+
+                    if (__chatSel && input) {
+                        const { start, end, value } = __chatSel;
+                        input.value =
+                            value.slice(0, start) + lastText + value.slice(end);
+                        const caret = start + lastText.length;
+                        input.selectionStart = input.selectionEnd = caret;
+                        __chatSel = null;
+                        input.dispatchEvent(
+                            new Event('input', { bubbles: true })
+                        );
+                        input.focus();
+                        lastFirst = false;
+                        return;
+                    }
+
+                    // ② 에디터(Quill) 적용
+                    const q = window.quill;
+                    if (!q) {
+                        if (typeof lastApplyFn === 'function') lastApplyFn();
+                        lastFirst = false;
+                        return;
+                    }
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    let sel = __apSnapSel ||
+                        q.getSelection() ||
+                        window.__chatSelStable ||
+                        window.__lastQuillRange || { index: docLen, length: 0 };
+
+                    if (sel && sel.length >= docLen)
+                        sel = { index: sel.index, length: 0 };
+
+                    // 사용자가 지금 선택한 게 있으면 선택 치환이 항상 우선
+                    if (sel && sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, lastText, 'user');
+                        q.setSelection(
+                            sel.index + lastText.length,
+                            0,
+                            'silent'
+                        );
+                        lastFirst = false;
+                    } else if (lastPlan?.mode === 'full' && lastFirst) {
+                        // 첫 1회에 한해 전체 갈아끼우기
+                        q.setText(lastText);
+                        q.setSelection(
+                            Math.max(0, lastText.length - 1),
+                            0,
+                            'silent'
+                        );
+                        lastFirst = false;
+                    } else {
+                        // 그 외 커서 없으면 문서 끝에 삽입
+                        const cur = q.getSelection(true) || {
+                            index: docLen,
+                            length: 0,
+                        };
+                        const pos =
+                            typeof sel.index === 'number'
+                                ? sel.index
+                                : cur.index;
+                        q.insertText(pos, lastText, 'user');
+                        q.setSelection(pos + lastText.length, 0, 'silent');
+                        lastFirst = false;
+                    }
+
+                    __apSnapSel = null;
+                    window.__chatSelStable = null;
+                    window.__lastQuillRange = null;
+                });
+
+                // ===== 입력창/풋바 높이=====
+                (() => {
+                    const drawer = document.getElementById('scDrawer');
+                    const listWrap =
+                        drawer?.querySelector('.sc-chat__messages');
+                    const list = drawer?.querySelector('#scChatList');
+
+                    const scrollBottom = () => {
+                        if (listWrap)
+                            listWrap.scrollTop = listWrap.scrollHeight;
+                    };
+                    if (list && listWrap) {
+                        scrollBottom();
+                        new MutationObserver(scrollBottom).observe(list, {
+                            childList: true,
+                        });
+                    }
+                })();
+
+                (() => {
+                    const drawer = document.getElementById('scDrawer');
+                    const composer =
+                        drawer?.querySelector('.sc-chat__composer'); // 입력창
+                    const foot = drawer?.querySelector('.sc-drawer__foot'); // 하단 3버튼
+
+                    function syncHeights() {
+                        const footH = foot?.offsetHeight || 0;
+                        const compH = composer?.offsetHeight || 0;
+                        drawer?.style.setProperty('--sc-foot-h', footH + 'px');
+                        drawer?.style.setProperty(
+                            '--sc-composer-h',
+                            compH + 'px'
+                        );
+                    }
+
+                    // 중복 옵저버 방지(패널 다시 열릴 때)
+                    try {
+                        window.__scRO_comp?.disconnect();
+                    } catch {}
+                    try {
+                        window.__scRO_foot?.disconnect();
+                    } catch {}
+
+                    requestAnimationFrame(syncHeights);
+                    if (composer) {
+                        window.__scRO_comp = new ResizeObserver(syncHeights);
+                        window.__scRO_comp.observe(composer);
+                    }
+                    if (foot) {
+                        window.__scRO_foot = new ResizeObserver(syncHeights);
+                        window.__scRO_foot.observe(foot);
+                    }
+                    window.addEventListener('resize', syncHeights, {
+                        passive: true,
+                    });
+                })();
+
+                const selText = getEditorSelectionText?.();
+                if (selText) {
+                    input.value = '';
+                }
+                input?.focus();
+                break;
+            }
+            case 'translate':
+                document
+                    .getElementById('scTranslateRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['applyTranslation', 'pdfScanTranslate'])
+                    );
+                break;
+            case 'style':
+                document
+                    .getElementById('scStyleRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['applyStyle', 'gptStyleChange'])
+                    );
+                break;
+            case 'honorific':
+                document
+                    .getElementById('scHonorRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['cohereHonorific', 'doHonorific'])
+                    );
+                break;
+            case 'informal':
+                document
+                    .getElementById('scInformalRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['cohereInformal', 'doInformal'])
+                    );
+                break;
+            case 'rewrite':
+                document
+                    .getElementById('scRewriteRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['mistralRewrite', 'doRewrite'])
+                    );
+                break;
+            case 'summary':
+                document
+                    .getElementById('scSummaryRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['summarizeText', 'doSummary'])
+                    );
+                break;
+            case 'expand':
+                document
+                    .getElementById('scExpandRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['expandText', 'doExpand'])
+                    );
+                break;
+            case 'grammar':
+                document
+                    .getElementById('scGrammarRun')
+                    ?.addEventListener('click', () =>
+                        callFirst(['mistralGrammar', 'doGrammar'])
+                    );
+                break;
+        }
+    }
+
+    // 5) 아이콘 클릭 → 패널 열기
+    if (dock) {
+        dock.addEventListener('click', (e) => {
+            const btn = e.target.closest('.sc-dock__btn');
+            if (!btn) return;
+            openPanel(btn.dataset.action || 'prompt');
+        });
+    }
+
+    (() => {
+        const $ = (sel) => document.querySelector(sel);
+        const getIconHTML = (action) =>
+            $(`.sc-dock__btn[data-action="${action}"] .sc-icon`)?.innerHTML ||
+            '';
+        const setIconHTML = (action, svg) => {
+            const el = $(`.sc-dock__btn[data-action="${action}"] .sc-icon`);
+            if (el) el.innerHTML = svg;
+        };
+
+        const ic = (paths, w = 1.8) =>
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="${w}"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+
+        const SVG = {
+            globe: ic(`
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M2 12h20"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10"/>
+    `),
+            sparkles: ic(`
+      <path d="M12 3v4"/><path d="M12 17v4"/>
+      <path d="M3 12h4"/><path d="M17 12h4"/>
+      <path d="m19.8 5.2-2.8 2.8"/><path d="m7 17-2.8 2.8"/>
+      <path d="m5.2 5.2 2.8 2.8"/><path d="m17 17 2.8 2.8"/>
+    `),
+            message: ic(`
+      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+    `),
+            shrink: ic(`
+      <path d="M15 15h6v6"/><path d="M9 9H3V3"/>
+      <path d="M21 15l-6 6"/><path d="M3 9l6-6"/>
+    `),
+        };
+
+        const originalTranslate = getIconHTML('translate');
+        const originalExpand = getIconHTML('expand');
+
+        if (originalExpand) setIconHTML('summary', originalExpand);
+
+        setIconHTML('expand', SVG.shrink);
+
+        setIconHTML('translate', SVG.globe);
+
+        if (originalTranslate) setIconHTML('rewrite', originalTranslate);
+
+        setIconHTML('style', SVG.sparkles);
+
+        setIconHTML('informal', SVG.message);
+    })();
+
+    // === Dock 아이콘 교체 ===
+    (function applyDockIcons() {
+        const q = (sel) => document.querySelector(sel);
+
+        const oldTranslateSVG =
+            q('.sc-dock__btn[data-action="translate"] svg')?.outerHTML || '';
+        const oldExpandSVG =
+            q('.sc-dock__btn[data-action="expand"] svg')?.outerHTML || '';
+
+        const ICON = {
+            globe: `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3 12h18"/>
+        <path d="M12 3a15 15 0 0 0 0 18M12 3a15 15 0 0 1 0 18"/>
+      </svg>`,
+
+            wand: `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 21l9-9"/>
+        <path d="M14 6l4 4M12 8l4 4"/>
+        <rect x="13" y="3" width="6" height="2" rx="1" transform="rotate(45 13 3)"/>
+      </svg>`,
+
+            expandOut: `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <!-- 중심에서 네 모서리로 뻗는 선 -->
+        <line x1="12" y1="12" x2="3"  y2="3"  />
+        <line x1="12" y1="12" x2="21" y2="3"  />
+        <line x1="12" y1="12" x2="3"  y2="21" />
+        <line x1="12" y1="12" x2="21" y2="21" />
+        <!-- 모서리 L 가이드 (방향감을 강조) -->
+        <polyline points="9 3, 3 3, 3 9"/>
+        <polyline points="15 21, 21 21, 21 15"/>
+        <polyline points="15 3, 21 3, 21 9"/>
+        <polyline points="9 21, 3 21, 3 15"/>
+      </svg>`,
+
+            face: `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M9 10h.01M15 10h.01"/>
+        <path d="M8 15s2 2 4 2 4-2 4-2"/>
+      </svg>`,
+        };
+        // 3) 교체 유틸
+        const setSVG = (action, svg) => {
+            const btn = q(`.sc-dock__btn[data-action="${action}"]`);
+            if (!btn) return;
+            const cur = btn.querySelector('svg');
+            if (cur) cur.outerHTML = svg;
+            else btn.insertAdjacentHTML('afterbegin', svg);
+        };
+
+        // 4) 요구사항 매핑
+
+        setSVG('translate', ICON.globe);
+
+        setSVG('style', ICON.wand);
+
+        if (oldExpandSVG) setSVG('summary', oldExpandSVG);
+
+        setSVG('expand', ICON.expandOut);
+
+        setSVG('informal', ICON.face);
+
+        if (oldTranslateSVG) setSVG('rewrite', oldTranslateSVG);
+    })();
+
+    // 6) 닫기 이벤트
+    closeBtn?.addEventListener('click', closePanel);
+    backdrop?.addEventListener('click', closePanel);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePanel();
+    });
+
+    // 7) 콘솔 디버그 오픈
+    window.DEBUG_OPEN_DRAWER = (key = 'summary') => {
+        openPanel(key);
+        const drawer = document.getElementById('scDrawer');
+        const wrap = document.querySelector('.wrap');
+        return {
+            key,
+            opened: !!drawer?.classList.contains('open'),
+            inWrap: drawer?.parentElement === wrap,
+        };
+    };
+})();

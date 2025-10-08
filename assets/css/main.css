@@ -2419,8 +2419,8 @@ section,
 .page-editor .wrap {
     max-width: 1500px;
     margin: 40px auto;
+    margin-top: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
     gap: 16px;
     padding: 20px;
     background: var(--editor-bg);
@@ -2439,6 +2439,10 @@ section,
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 .page-editor .editor-card {
+    width: auto;
+    margin: 0;
+    max-width: 100%;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
@@ -3009,6 +3013,1282 @@ page-editor #resultArea:empty {
 #ocrModal .modal-actions {
     margin-top: 12px; /* 그대로 두거나 취향대로 */
     margin-bottom: 36px; /* ↑ 이 값 키울수록 버튼이 더 위로 올라가요 */
+}
+
+/* 2) 에디터 카드를 가운데 놓고, 적절한 가로 폭으로 */
+.page-editor .editor-card {
+    width: auto;
+    max-width: 100%;
+    min-width: 0; /* 그리드에서 내용 때문에 넘치지 않게 */
+    margin: 0; /* 가운데 정렬 불필요 */
+}
+
+/* 3) 툴바/에디터 프레임이 세로 공간을 넉넉히 쓰도록 */
+.page-editor .ql-frame {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100dvh - 180px); /* 헤더/패딩 감안한 세로 높이 */
+}
+
+.page-editor .ql-frame .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 5; /* 툴바가 스크롤 시 위에 남도록(선택) */
+    background: #fff;
+}
+
+.page-editor #quill.editor {
+    flex: 1 1 auto; /* 남는 세로 공간을 꽉 채움 */
+    overflow: auto; /* 내용 많으면 내부 스크롤 */
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    background: #fff; /* 배경 확실히 */
+}
+
+/* 4) 모바일에서 좌우 여백 조금 넓혀 가독성 확보 */
+@media (max-width: 640px) {
+    .page-editor .editor-card {
+        width: auto;
+        max-width: 100%;
+        min-width: 0; /* 그리드에서 내용 때문에 넘치지 않게 */
+        margin: 0; /* 가운데 정렬 불필요 */
+    }
+}
+
+/* ================================
+   Right Floating Tool Dock (clean)
+   - 우측 세로 아이콘 바
+   - 하나의 큰 라벨 박스
+   - 아이콘만 확대
+   ================================= */
+
+/* Dock */
+.sc-dock {
+    position: fixed;
+    right: 16px;
+    top: 180px; /* 위치만 필요에 따라 조절 */
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 8px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Dock 버튼 */
+.sc-dock__btn {
+    width: var(--dock-w);
+    height: var(--dock-btn-h);
+    display: grid;
+    place-items: center;
+    border: 1px solid #dbe0ea;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    position: relative;
+}
+.sc-dock__btn:hover {
+    background: #f2f7f6;
+    transform: translateY(-1px);
+}
+
+/* 아이콘 크기/확대 (SVG/IMG/커스텀) */
+.sc-dock__btn svg,
+.sc-dock__btn img,
+.sc-dock__btn .sc-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.12s ease;
+    will-change: transform;
+}
+.sc-dock__btn:hover svg,
+.sc-dock__btn:hover img,
+.sc-dock__btn:hover .sc-icon,
+.sc-dock__btn:focus-visible svg,
+.sc-dock__btn:focus-visible img,
+.sc-dock__btn:focus-visible .sc-icon {
+    transform: scale(1.2); /* 취향에 따라 1.08~1.15 */
+}
+
+/* 개별 말풍선은 사용하지 않음(있어도 숨김) */
+.sc-dock__btn .sc-tip {
+    display: none !important;
+}
+
+/* ------------ 라벨: 한 덩어리 박스 ------------- */
+.sc-dock__labels {
+    position: fixed;
+    right: 72px; /* 아이콘 바와 간격 */
+    top: 180px; /* .sc-dock과 동일하게 */
+    z-index: 999;
+    width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: width 0.18s ease, opacity 0.12s ease;
+}
+.sc-dock__labelcol {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 12px;
+    width: 200px; /* 펼쳐졌을 때 실제 너비 */
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.sc-dock__label {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #334155;
+    font-weight: 500;
+}
+
+/* Dock 또는 라벨 영역에 마우스가 들어오면 모두 표시 */
+.sc-dock:hover + .sc-dock__labels,
+.sc-dock__labels:hover {
+    width: 200px;
+    opacity: 1;
+}
+
+/* 강조: n번째 아이콘 hover → n번째 라벨 강조 (:has 지원 브라우저) */
+.sc-dock:has(.sc-dock__btn:nth-child(1):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(1),
+.sc-dock:has(.sc-dock__btn:nth-child(2):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(2),
+.sc-dock:has(.sc-dock__btn:nth-child(3):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(3),
+.sc-dock:has(.sc-dock__btn:nth-child(4):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(4),
+.sc-dock:has(.sc-dock__btn:nth-child(5):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(5),
+.sc-dock:has(.sc-dock__btn:nth-child(6):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(6),
+.sc-dock:has(.sc-dock__btn:nth-child(7):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(7),
+.sc-dock:has(.sc-dock__btn:nth-child(8):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(8),
+.sc-dock:has(.sc-dock__btn:nth-child(9):hover)
+    + .sc-dock__labels
+    .sc-dock__label:nth-child(9) {
+    font-weight: 700;
+    background: #f2f7f6;
+    border: 1px solid #dbe0ea;
+}
+
+/* 접근성: 모션 최소화 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+    .sc-dock__btn,
+    .sc-dock__btn svg,
+    .sc-dock__btn img,
+    .sc-dock__btn .sc-icon {
+        transition: none;
+    }
+}
+
+/*여기서부터 정리 필요*/
+
+/* ===  Inline Panel === */
+:root {
+    --panel-w: 360px;
+    --dock-w: 56px;
+}
+
+/* 1) 기본 레이아웃: 패널 없을 때 1열 */
+.page-editor .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding-inline: 16px;
+    transition: grid-template-columns 0.22s ease;
+}
+
+/* 2) 패널이 열리면 2열 */
+.page-editor .wrap.with-panel {
+    grid-template-columns: minmax(0, 1fr) var(--panel-w);
+}
+
+/* 3) 도크는 화면 오른쪽에 고정(항상 보이기) */
+.page-editor .sc-dock {
+    position: fixed;
+    top: 250px;
+    right: 12px;
+    z-index: 1300;
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 4) 인라인 패널: .wrap 안에서만 동작(오버레이 제거) */
+.page-editor .wrap .sc-drawer {
+    position: sticky;
+    top: 20px;
+    right: auto;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    width: var(--panel-w);
+    max-width: 92vw;
+    height: calc(100dvh - 40px);
+    background: #fff;
+    border-left: 1px solid #e5e7eb;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+
+    /* 기본은 숨김 */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+}
+
+/* 패널 열리면 표시 */
+.page-editor .wrap.with-panel .sc-drawer {
+    opacity: 1;
+    pointer-events: auto;
+
+    margin-right: var(--dock-w);
+}
+
+.page-editor .wrap .sc-drawer__backdrop {
+    display: none !important;
+}
+
+/* 5) 드로어 내부 구성 요소 */
+.page-editor .sc-drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eef0f4;
+}
+.page-editor .sc-drawer__title {
+    font-weight: 700;
+    color: #1f2937;
+}
+.page-editor .sc-drawer__close {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    cursor: pointer;
+}
+.page-editor .sc-drawer__body {
+    padding: 14px 16px;
+    overflow: auto;
+}
+.page-editor .sc-drawer__foot {
+    margin-top: auto;
+    padding: 12px 16px;
+    border-top: 1px solid #eef0f4;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* 6) 유틸리티(드로어 안에서 주로 사용) */
+.page-editor .sc-btn {
+    border: 1px solid #dbe0ea;
+    background: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.page-editor .sc-btn--primary {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+}
+.page-editor .sc-input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+}
+.page-editor .sc-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.page-editor .sc-row + .sc-row {
+    margin-top: 10px;
+}
+
+.page-editor .wrap .sc-drawer {
+    position: sticky;
+    top: 20px;
+    transform: none;
+    width: var(--panel-w);
+    height: calc(100dvh - 40px);
+    background: #fff;
+    border-left: 1px solid #e5e7eb;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+    margin-right: var(--dock-w);
+}
+.page-editor .wrap.with-panel .sc-drawer {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.page-editor .wrap .sc-drawer__backdrop {
+    display: none !important;
+}
+
+/* === Dock & Labels === */
+:root {
+    --dock-top: 220px;
+    --dock-right: 12px;
+    --dock-gap: 10px;
+    --dock-w: 56px;
+    --dock-btn-h: 36px;
+}
+
+/* 도크(아이콘 바) 위치 */
+.page-editor .sc-dock {
+    position: fixed;
+    top: var(--dock-top);
+    right: var(--dock-right);
+    z-index: 1300;
+    display: flex !important;
+    flex-direction: column;
+    gap: var(--dock-gap);
+}
+
+/* 기능명 라벨  */
+#scDockLabels,
+.page-editor #scDockLabels {
+    position: fixed;
+
+    top: var(--dock-top);
+    right: calc(var(--dock-right) + var(--dock-w) + 8px);
+    z-index: 1299;
+    display: flex;
+    flex-direction: column;
+    gap: var(--dock-gap);
+    pointer-events: none;
+}
+
+#scDockLabels .sc-dock__label {
+    min-height: var(--dock-btn-h);
+    display: flex;
+    align-items: center;
+}
+
+/* === Dock width shrink (single source of truth) === */
+:root {
+    --dock-w: 36px;
+    --dock-btn-h: 36px;
+}
+
+.page-editor .sc-dock .sc-dock__btn {
+    width: var(--dock-w);
+    height: var(--dock-btn-h);
+}
+
+#scDockLabels {
+    right: calc(var(--dock-right, 12px) + var(--dock-w) + 8px);
+}
+
+.page-editor .wrap.with-panel .sc-drawer {
+    margin-right: var(--dock-w);
+}
+
+.page-editor .sc-dock {
+    padding-inline: 2px;
+}
+
+.page-editor .sc-dock .sc-dock__btn {
+    color: #2e7d6b;
+} /* 기본 아이콘 색 */
+.page-editor .sc-dock .sc-dock__btn svg {
+    stroke: currentColor;
+}
+
+/* === Dock active state === */
+:root {
+    --dock-active: #16a34a; /* 테두리/아이콘 색 */
+    --dock-active-bg: #f8ecfd; /* 배경 */
+}
+
+.sc-dock .sc-dock__btn.is-active,
+.sc-dock .sc-dock__btn[aria-pressed='true'] {
+    background: var(--dock-active-bg);
+    border-color: var(--dock-active);
+    box-shadow: 0 0 0 2px
+        color-mix(in srgb, var(--dock-active) 18%, transparent) inset;
+    transform: translateY(-1px);
+}
+
+.sc-dock .sc-dock__btn.is-active svg,
+.sc-dock .sc-dock__btn.is-active .sc-icon,
+.sc-dock .sc-dock__btn[aria-pressed='true'] svg,
+.sc-dock .sc-dock__btn[aria-pressed='true'] .sc-icon {
+    color: var(--dock-active);
+    transform: scale(1.12);
+    transition: transform 0.12s ease;
+    stroke: var(--dock-active);
+}
+
+.sc-dock .sc-dock__btn.is-active img,
+.sc-dock .sc-dock__btn[aria-pressed='true'] img {
+    filter: saturate(1.15) contrast(1.05);
+}
+
+/* 1) 도크 아이콘이 버튼의 color를 따르도록(기본색 지정 + stroke 강제) */
+.sc-dock .sc-dock__btn {
+    color: #2e7d6b;
+}
+.sc-dock .sc-dock__btn svg,
+.sc-dock .sc-dock__btn svg * {
+    stroke: currentColor !important;
+}
+
+.sc-dock .sc-dock__btn svg [fill]:not([fill='none']) {
+    fill: currentColor !important;
+}
+
+/* 2) 활성(선택) 상태일 때 아이콘 색 변경 확실히 */
+.sc-dock .sc-dock__btn.is-active,
+.sc-dock .sc-dock__btn[aria-pressed='true'] {
+    color: var(--dock-active) !important;
+}
+.sc-dock .sc-dock__btn.is-active:hover,
+.sc-dock .sc-dock__btn[aria-pressed='true']:hover {
+    background: var(--dock-active-bg) !important;
+    border-color: var(--dock-active) !important;
+}
+
+.page-editor .sc-dock .sc-dock__btn svg,
+.page-editor .sc-dock .sc-dock__btn svg * {
+    stroke: currentColor !important;
+}
+
+/* ===== AI Prompt panel bits ===== */
+#scDrawer .sc-label {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #1f2937;
+}
+#scDrawer .sc-meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-left: 8px;
+}
+#scDrawer .sc-section {
+    margin-top: 12px;
+}
+#scDrawer .sc-surface {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 96px;
+    white-space: pre-wrap;
+    background: #fff;
+}
+#scDrawer .sc-seg {
+    display: inline-flex;
+    gap: 6px;
+}
+#scDrawer .sc-seg__btn {
+    border: 1px solid #dbe0ea;
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+#scDrawer .sc-seg__btn.is-on {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+}
+
+/* ===== AI Prompt panel bits ===== */
+#scDrawer .sc-label {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #1f2937;
+}
+#scDrawer .sc-meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-left: 8px;
+}
+#scDrawer .sc-section {
+    margin-top: 12px;
+}
+#scDrawer .sc-surface {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 96px;
+    white-space: pre-wrap;
+    background: #fff;
+}
+#scDrawer .sc-seg {
+    display: inline-flex;
+    gap: 6px;
+}
+#scDrawer .sc-seg__btn {
+    border: 1px solid #dbe0ea;
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+#scDrawer .sc-seg__btn.is-on {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+}
+
+.wrap.with-panel #scDrawer,
+#scDrawer.open {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    position: sticky !important;
+    top: 20px !important;
+}
+
+/* === AI 프롬프트 패널 === */
+.page-editor .sc-prompt {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.page-editor .sc-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.page-editor .sc-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+.page-editor .sc-meta {
+    font-size: 12px;
+    color: #64748b;
+    margin-left: 8px;
+}
+.page-editor .sc-input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+}
+.page-editor .sc-seg {
+    display: inline-flex;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.page-editor .sc-seg__btn {
+    padding: 6px 10px;
+    border: 0;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+.page-editor .sc-seg__btn.is-on {
+    background: #f2f7f6;
+    color: #065f46;
+    font-weight: 700;
+}
+.page-editor .sc-result {
+    min-height: 120px;
+    padding: 12px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #fafafa;
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+.page-editor .sc-btn {
+    border: 1px solid #dbe0ea;
+    background: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.page-editor .sc-btn--primary {
+    background: #16a34a;
+    color: #fff;
+    border-color: #16a34a;
+}
+
+/* === Chat UI === */
+.sc-chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 12px;
+}
+.sc-chat__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sc-chipbar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.sc-chip {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+}
+.sc-chip.is-on {
+    background: #111827;
+    color: #fff;
+    border-color: #111827;
+}
+.sc-chat__messages {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 2px;
+}
+.sc-msg {
+    max-width: 78%;
+    padding: 10px 12px;
+    border-radius: 14px;
+    line-height: 1.6;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.sc-msg.is-user {
+    align-self: flex-end;
+    background: #dcf2ff;
+}
+.sc-msg.is-bot {
+    align-self: flex-start;
+    background: #f6f7f9;
+}
+.sc-msg__meta {
+    margin-top: 4px;
+    font-size: 11px;
+    opacity: 0.6;
+}
+.sc-typing {
+    display: inline-block;
+    min-width: 22px;
+}
+.sc-typing > span {
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #9ca3af;
+    margin: 0 1px;
+    animation: sc-bounce 1s infinite ease-in-out;
+}
+.sc-typing > span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+.sc-typing > span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+@keyframes sc-bounce {
+    0%,
+    80%,
+    100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-4px);
+    }
+}
+.sc-chat__composer {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 8px;
+    background: #fff;
+}
+.sc-chat__composer textarea {
+    flex: 1;
+    resize: none;
+    border: 0;
+    outline: none;
+    min-height: 42px;
+    max-height: 160px;
+}
+.sc-chat__composer .sc-btn-send {
+    border: 1px solid #111827;
+    background: #111827;
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+.sc-chat__hint {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.sc-drawer {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: 420px;
+    z-index: 9999;
+    pointer-events: auto;
+}
+.sc-drawer__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+}
+.sc-drawer__body,
+.sc-drawer__foot {
+    pointer-events: auto;
+}
+
+.sc-drawer__body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.sc-drawer__foot {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding-top: 8px;
+}
+
+.sc-chat__composer {
+    z-index: 1;
+}
+
+/* ==== Drawer foot bar ==================================================== */
+.sc-drawer__foot {
+    position: sticky;
+    bottom: 0;
+    padding: 10px 8px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: saturate(150%) blur(6px);
+    border-top: 1px solid #eef2f7;
+    z-index: 1;
+}
+.sc-footbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ==== Buttons ============================================================ */
+.sc-btn {
+    appearance: none;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111827;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    line-height: 1;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease,
+        transform 0.02s ease;
+}
+.sc-btn:hover {
+    border-color: #111827;
+}
+.sc-btn:active {
+    transform: translateY(1px);
+}
+.sc-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
+}
+
+.sc-btn--outline {
+    border-color: #111827;
+}
+
+.sc-btn--brand {
+    border-color: #111827;
+    background: #111827;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.sc-btn--brand:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.sc-btn--ghost {
+    background: transparent;
+    border-color: #cbd5e1;
+    color: #111827;
+}
+.sc-btn--ghost:hover {
+    border-color: #111827;
+}
+
+/* 비활성 통일 */
+.sc-btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: saturate(0);
+}
+
+:root {
+    --sc-accent: #111827;
+    --sc-ink-on-accent: #fff;
+    --sc-border-strong: #0f172a;
+    --sc-border-muted: #cbd5e1;
+}
+
+#scDrawer #scChatApply {
+    background: var(--sc-accent);
+    color: var(--sc-ink-on-accent);
+    border: 1px solid var(--sc-accent);
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.15s ease, transform 0.02s ease;
+}
+#scDrawer #scChatApply:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+#scDrawer #scChatApply:active {
+    transform: translateY(1px);
+}
+#scDrawer #scChatApply:disabled {
+    opacity: 0.55;
+    filter: saturate(0);
+}
+
+#scDrawer #scChatCopy {
+    background: #fff;
+    color: #111827;
+    border: 2px solid var(--sc-border-strong);
+    border-radius: 12px;
+    font-weight: 600;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+#scDrawer #scChatCopy:hover {
+    background: #f9fafb;
+}
+#scDrawer #scChatCopy:disabled {
+    opacity: 0.55;
+    filter: saturate(0);
+}
+
+#scDrawer #scChatNew {
+    background: transparent;
+    color: #111827;
+    border: 1px solid var(--sc-border-muted);
+    border-radius: 12px;
+    font-weight: 600;
+    transition: border-color 0.15s ease;
+}
+#scDrawer #scChatNew:hover {
+    border-color: var(--sc-border-strong);
+}
+
+#scDrawer #scChatApply:focus-visible,
+#scDrawer #scChatCopy:focus-visible,
+#scDrawer #scChatNew:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.14);
+}
+
+:root {
+    --sc-border-strong: #0f172a;
+}
+
+#scDrawer #scChatApply,
+#scDrawer #scChatCopy,
+#scDrawer #scChatNew {
+    background: #fff;
+    color: #111827;
+    border: 2px solid var(--sc-border-strong);
+    border-radius: 12px;
+    font-weight: 600;
+    padding: 10px 14px;
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease,
+        transform 0.02s ease;
+}
+
+#scDrawer #scChatApply:hover,
+#scDrawer #scChatCopy:hover,
+#scDrawer #scChatNew:hover {
+    background: #f9fbf9;
+}
+
+#scDrawer #scChatApply:active,
+#scDrawer #scChatCopy:active,
+#scDrawer #scChatNew:active {
+    transform: translateY(1px);
+}
+
+#scDrawer #scChatApply:disabled,
+#scDrawer #scChatCopy:disabled,
+#scDrawer #scChatNew:disabled {
+    opacity: 0.55;
+    filter: saturate(0);
+}
+
+#scDrawer #scChatApply:focus-visible,
+#scDrawer #scChatCopy:focus-visible,
+#scDrawer #scChatNew:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.14);
+}
+
+:root {
+    --sc-btn-rgb: 56, 189, 248;
+    --sc-btn-border: #0f172a; /* 테두리 */
+    --sc-btn-text: #111827; /* 버튼 텍스트 */
+}
+
+#scDrawer #scChatApply,
+#scDrawer #scChatCopy,
+#scDrawer #scChatNew {
+    color: var(--sc-btn-text);
+    background: rgba(var(--sc-btn-rgb), 0.4);
+    border: 2px solid var(--sc-btn-border);
+    border-radius: 12px;
+    font-weight: 600;
+    padding: 10px 14px;
+    box-shadow: none;
+    transition: background 0.15s ease, border-color 0.15s ease,
+        transform 0.02s ease;
+}
+
+#scDrawer #scChatApply:hover,
+#scDrawer #scChatCopy:hover,
+#scDrawer #scChatNew:hover {
+    background: rgba(var(--sc-btn-rgb), 0.1);
+}
+
+#scDrawer #scChatApply:active,
+#scDrawer #scChatCopy:active,
+#scDrawer #scChatNew:active {
+    background: rgba(var(--sc-btn-rgb), 0.14);
+    transform: translateY(1px);
+}
+
+#scDrawer #scChatApply:focus-visible,
+#scDrawer #scChatCopy:focus-visible,
+#scDrawer #scChatNew:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--sc-btn-rgb), 0.18);
+}
+
+#scDrawer #scChatApply:disabled,
+#scDrawer #scChatCopy:disabled,
+#scDrawer #scChatNew:disabled {
+    opacity: 0.55;
+    filter: saturate(0);
+}
+
+#scDrawer .sc-drawer__body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
+}
+
+#scDrawer .sc-chat {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#scDrawer .sc-chat__messages {
+    flex: 1;
+    min-height: 0;
+    overflow: visible;
+    padding-bottom: calc(var(--sc-composer-h, 76px) + 12px);
+}
+
+#scDrawer .sc-chat__composer {
+    position: sticky;
+    bottom: var(--sc-foot-h, 0px);
+    background: #fff;
+    z-index: 1;
+    border-top: 1px solid #eef2f7;
+}
+
+#scDrawer .sc-drawer__foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.95);
+    border-top: 1px solid #eef2f7;
+}
+
+#scDrawer.sc-drawer {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#scDrawer .sc-drawer__head {
+    flex: 0 0 auto;
+}
+#scDrawer .sc-drawer__foot {
+    flex: 0 0 auto;
+    z-index: 2;
+    background: #fff;
+}
+
+#scDrawer .sc-drawer__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+}
+
+#scDrawer .sc-chat {
+    display: grid;
+    grid-template-rows: 1fr auto auto;
+    width: 100%;
+    min-height: 0;
+}
+
+#scDrawer .sc-chat__messages {
+    min-height: 0;
+    overflow: auto;
+    padding: 10px 12px;
+}
+
+#scDrawer .sc-chat__context,
+#scDrawer #scChatCtx {
+    border-top: 1px solid #eef2f7;
+    background: #fafafa;
+    padding: 8px 12px;
+}
+
+#scDrawer .sc-chat__composer {
+    position: static !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    border-top: 1px solid #eef2f7;
+    background: #fff;
+    padding: 8px 12px;
+}
+
+#scDrawer .sc-chat__messages {
+    padding-bottom: 12px !important;
+}
+
+.sc-drawer {
+    --sc-foot-h: 0px;
+    --sc-composer-h: 72px;
+    --sc-border: #e5e7eb;
+    --sc-bg: #ffffff;
+}
+
+.sc-drawer__body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.sc-chat__messages {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 12px 14px calc(var(--sc-composer-h, 72px) + 16px);
+
+    scroll-behavior: smooth;
+}
+
+.sc-chat__composer {
+    position: sticky;
+    bottom: calc(var(--sc-foot-h, 0px) + env(safe-area-inset-bottom));
+
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: saturate(1.1) blur(6px);
+    border-top: 1px solid var(--sc-border);
+    padding: 10px 12px;
+    z-index: 3;
+}
+
+#scChatScope {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+    line-height: 1.3;
+    pointer-events: none;
+}
+
+#scChatInput {
+    max-height: 40vh;
+    overflow: auto;
+    resize: none;
+}
+
+.sc-drawer__foot {
+    position: sticky;
+    bottom: env(safe-area-inset-bottom);
+    background: var(--sc-bg);
+    border-top: 1px solid var(--sc-border);
+    z-index: 4;
+}
+
+@supports (padding: max(0px)) {
+    .sc-chat__composer {
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+    .sc-drawer__foot {
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+}
+
+.sc-drawer__body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.sc-chat__messages {
+    flex: 1 1 auto;
+    overflow: auto;
+
+    padding: 12px 14px calc(var(--sc-composer-h, 72px) + 16px);
+    scroll-behavior: smooth;
+}
+
+.sc-chat__composer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--sc-foot-h, 0px) + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: saturate(1.1) blur(6px);
+    border-top: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    z-index: 4;
+    box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.06);
+}
+
+#scChatScope {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.sc-drawer__foot {
+    position: sticky;
+    bottom: env(safe-area-inset-bottom);
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    z-index: 5;
+}
+
+#scChatInput {
+    max-height: 40vh;
+    overflow: auto;
+    resize: none;
+}
+
+.sc-drawer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+.sc-drawer__head,
+.sc-drawer__foot {
+    flex: 0 0 auto;
+}
+
+.sc-drawer__body {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sc-chat__messages {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 12px 14px calc(var(--sc-composer-h, 72px) + 16px);
+    scroll-behavior: smooth;
+}
+
+.sc-chat__composer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--sc-foot-h, 0px) + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: saturate(1.1) blur(6px);
+    border-top: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    z-index: 4;
+}
+
+.sc-drawer__foot {
+    position: sticky;
+    bottom: env(safe-area-inset-bottom);
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    z-index: 5;
+}
+
+#scChatScope {
+    display: block;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+#scChatInput {
+    max-height: 40vh;
+    overflow: auto;
+    resize: none;
+}
+
+.sc-dock__btn .sc-icon svg {
+    width: 22px;
+    height: 22px;
+    display: block;
 }
 
 /*--------------------------------------------------------------
