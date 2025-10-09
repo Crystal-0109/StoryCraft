@@ -491,12 +491,57 @@
             </div>
         </aside>
         <div id="customContextMenu" class="custom-context-menu" hidden>
+            <button data-action="style" class="has-submenu">문체 변경 ▸</button>
+            <button data-action="translate" class="has-submenu">번역 ▸</button>
             <button data-action="summary">요약</button>
             <button data-action="expand">확장</button>
             <button data-action="honorific">높임말</button>
             <button data-action="informal">반말</button>
             <button data-action="rewrite">재작성</button>
             <button data-action="grammar">문법 교정</button>
+
+            <!-- 문체 변경 서브메뉴 -->
+            <div id="styleSubmenu" class="submenu" hidden>
+                <button data-subaction="casual">구어체</button>
+                <button data-subaction="formal">격식체</button>
+                <button data-subaction="literary">문학체</button>
+                <button data-subaction="academic">학술체</button>
+            </div>
+            <!-- 번역 서브메뉴 -->
+            <div id="translateSubmenu" class="submenu" hidden>
+                <button data-subaction="gu">구자라트어</button>
+                <button data-subaction="el">그리스어</button>
+                <button data-subaction="ne">네팔어</button>
+                <button data-subaction="nl">네덜란드어</button>
+                <button data-subaction="de">독일어</button>
+                <button data-subaction="ru">러시아어</button>
+                <button data-subaction="ro">루마니아어</button>
+                <button data-subaction="mr">마라티어</button>
+                <button data-subaction="ms">말레이어</button>
+                <button data-subaction="vi">베트남어</button>
+                <button data-subaction="bn">벵골어</button>
+                <button data-subaction="sv">스웨덴어</button>
+                <button data-subaction="es">스페인어</button>
+                <button data-subaction="af">아프리칸스어</button>
+                <button data-subaction="ar">아랍어</button>
+                <button data-subaction="en">영어</button>
+                <button data-subaction="uk">우크라이나어</button>
+                <button data-subaction="it">이탈리아어</button>
+                <button data-subaction="ja">일본어</button>
+                <button data-subaction="jv">자바어</button>
+                <button data-subaction="ka">조지아어</button>
+                <button data-subaction="zh-CN">중국어(간체)</button>
+                <button data-subaction="zh-TW">중국어(번체)</button>
+                <button data-subaction="ta">타밀어</button>
+                <button data-subaction="th">태국어</button>
+                <button data-subaction="tr">터키어</button>
+                <button data-subaction="fa">페르시아어</button>
+                <button data-subaction="pt">포르투갈어</button>
+                <button data-subaction="pl">폴란드어</button>
+                <button data-subaction="fr">프랑스어</button>
+                <button data-subaction="ko">한국어</button>
+                <button data-subaction="hi">힌디어</button>
+            </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>

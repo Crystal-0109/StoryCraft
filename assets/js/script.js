@@ -2539,7 +2539,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ③ 이미지 추출
+        // ③ 텍스트 추출
         if (e.target.closest('#imgMenu-ocr')) {
             // 에디터 초기화 (이미 만들어졌으면 재생성하지 않음)
             if (!quill2) {
@@ -4272,10 +4272,12 @@ async function imagePromptChange() {
     };
 })();
 
+const menu = document.getElementById('customContextMenu');
+const styleSubmenu = document.getElementById('styleSubmenu');
+const translateSubmenu = document.getElementById('translateSubmenu');
 // 페이지 전체에 한 번만 등록
 document.addEventListener('contextmenu', (e) => {
     const quill2 = document.getElementById('quill2');
-    const menu = document.getElementById('customContextMenu');
 
     // quill2가 열려 있고, 그 안에서 우클릭한 경우에만 작동
     if (quill2 && quill2.contains(e.target)) {
@@ -4285,172 +4287,282 @@ document.addEventListener('contextmenu', (e) => {
         menu.style.top = `${e.pageY}px`;
         menu.style.left = `${e.pageX}px`;
         menu.hidden = false;
+        styleSubmenu.hidden = true; // 문체 변경 서브메뉴 초기화
+        translateSubmenu.hidden = true;
     } else {
         // 다른 곳 클릭 시 메뉴 숨김
         menu.hidden = true;
+        styleSubmenu.hidden = true;
+        translateSubmenu.hidden = true;
     }
 });
 
 // 클릭하면 메뉴 닫기
 document.addEventListener('click', () => {
-    document.getElementById('customContextMenu').hidden = true;
+    menu.hidden = true;
+    styleSubmenu.hidden = true;
+    translateSubmenu.hidden = true;
 });
 
 // 메뉴 클릭 동작 정의
-document
-    .getElementById('customContextMenu')
-    .addEventListener('click', async (e) => {
-        const action = e.target.dataset.action;
-        const { text, apply } = getQuillSelectionOrAll2();
-        const content = (text || '').trim();
-        if (!content) {
-            alert('내용을 입력하세요.');
-            return;
-        }
+menu.addEventListener('click', async (e) => {
+    const action = e.target.dataset.action;
+    const { text, apply } = getQuillSelectionOrAll2();
+    const content = (text || '').trim();
 
-        if (!action) return;
+    if (!content) {
+        alert('내용을 입력하세요.');
+        return;
+    }
 
-        switch (action) {
-            case 'summary':
-                console.log('요약 기능 실행');
+    if (!action) return;
 
-                try {
-                    const data = await postJSON(`${BASE_URL}/summary`, {
-                        content,
-                    });
-                    const out = (
-                        data?.result ??
-                        data?.text ??
-                        data?.checked ??
-                        data?.styled_text ??
-                        data?.translated ??
-                        ''
-                    ).trim();
-                    if (!out) throw new Error('빈 결과');
-                    apply(out);
-                } catch (e) {
-                    alert('요약 실패: ' + e.message);
-                } finally {
-                    // showSpin(false);
-                    console.log('텍스트 추출 모달에서 요약 완료');
-                }
-                break;
-            case 'expand':
-                console.log('확장 기능 실행');
-                
-                try {
-                    const data = await postJSON(`${BASE_URL}/expand`, {
-                        content,
-                    }); // 확장 엔드포인트로 변경
-                    const out = (
-                        data?.result ??
-                        data?.text ??
-                        data?.checked ??
-                        data?.styled_text ??
-                        data?.translated ??
-                        ''
-                    ).trim();
-                    if (!out) throw new Error('빈 결과');
-                    apply(out);
-                } catch (e) {
-                    alert('확장 실패: ' + e.message);
-                } finally {
-                    console.log('텍스트 추출 모달에서 확장 완료');
-                }
-                break;
-            case 'rewrite':
-                console.log('재작성 실행');
-                
-                try {
-                    const data = await postJSON(`${BASE_URL}/mistralRewrite`, {
-                        content,
-                    });
-                    const out = (
-                        data?.result ??
-                        data?.text ??
-                        data?.styled_text ??
-                        data?.checked ??
-                        data?.translated ??
-                        ''
-                    ).trim();
-                    if (!out) throw new Error('빈 결과');
+    switch (action) {
+        case 'summary':
+            console.log('요약 기능 실행');
 
-                    apply(out);
-                } catch (e) {
-                    alert('첨삭 실패: ' + e.message);
-                } finally {
-                    console.log('텍스트 추출 모달에서 재작성 완료');
-                }
-                break;
-            case 'honorific':
-                console.log('높임말 실행');
-                try {
-                    const data = await postJSON(`${BASE_URL}/cohereHonorific`, {
-                        content,
-                    });
-                    const out = (
-                        data?.result ??
-                        data?.text ??
-                        data?.checked ??
-                        data?.styled_text ??
-                        data?.translated ??
-                        ''
-                    ).trim();
-                    if (!out) throw new Error('빈 결과');
-                    apply(out);
-                } catch (e) {
-                    alert('높임말 변환 실패: ' + e.message);
-                } finally {
-                    console.log('텍스트 추출 모달에서 높임말 완료');
-                }
-                break;
-            case 'informal':
-                console.log('반말 실행');
-                try {
-                    const data = await postJSON(`${BASE_URL}/cohereInformal`, {
-                        content,
-                    });
-                    const out = (
-                        data?.result ??
-                        data?.text ??
-                        data?.checked ??
-                        data?.styled_text ??
-                        data?.translated ??
-                        ''
-                    ).trim();
-                    if (!out) throw new Error('빈 결과');
-                    apply(out);
-                } catch (e) {
-                    alert('반말 변환 실패: ' + e.message);
-                } finally {
-                    console.log('텍스트 추출 모달에서 반말 완료');
-                }
-                break;
-            case 'grammar':
-                console.log('문법 교정 실행');
-                if (content.length >= 300) {
-                    alert('글자 수가 300자를 초과했습니다. 300자 미만으로 써주십시오.');
-                    return;
-                }
-                try {
-                    const data = await postJSON(`${BASE_URL}/editorGrammar`, {
-                        content,
-                    });
-            
-                    const out = (data?.checked ?? data?.result ?? data?.text ?? '').trim();
-                    if (!out) throw new Error('빈 결과');
-            
-                    apply(out);
-                    console.log('교정된 결과: ', data.checked);
-                } catch (e) {
-                    alert('문법 교정 실패: ' + e.message);
-                } finally {
-                    console.log('텍스트 추출 모달에서 문법 교정 완료');
-                }
+            try {
+                const data = await postJSON(`${BASE_URL}/summary`, {
+                    content,
+                });
+                const out = (
+                    data?.result ??
+                    data?.text ??
+                    data?.checked ??
+                    data?.styled_text ??
+                    data?.translated ??
+                    ''
+                ).trim();
+                if (!out) throw new Error('빈 결과');
+                apply(out);
+            } catch (e) {
+                alert('요약 실패: ' + e.message);
+            } finally {
+                console.log('텍스트 추출 모달에서 요약 완료');
+            }
+            break;
+        case 'expand':
+            console.log('확장 기능 실행');
 
-                break;
-        }
+            try {
+                const data = await postJSON(`${BASE_URL}/expand`, {
+                    content,
+                });
+                const out = (
+                    data?.result ??
+                    data?.text ??
+                    data?.checked ??
+                    data?.styled_text ??
+                    data?.translated ??
+                    ''
+                ).trim();
+                if (!out) throw new Error('빈 결과');
+                apply(out);
+            } catch (e) {
+                alert('확장 실패: ' + e.message);
+            } finally {
+                console.log('텍스트 추출 모달에서 확장 완료');
+            }
+            break;
+        case 'rewrite':
+            console.log('재작성 실행');
 
-        // 메뉴 닫기
-        e.currentTarget.hidden = true;
-    });
+            try {
+                const data = await postJSON(`${BASE_URL}/mistralRewrite`, {
+                    content,
+                });
+                const out = (
+                    data?.result ??
+                    data?.text ??
+                    data?.styled_text ??
+                    data?.checked ??
+                    data?.translated ??
+                    ''
+                ).trim();
+                if (!out) throw new Error('빈 결과');
+
+                apply(out);
+            } catch (e) {
+                alert('첨삭 실패: ' + e.message);
+            } finally {
+                console.log('텍스트 추출 모달에서 재작성 완료');
+            }
+            break;
+        case 'honorific':
+            console.log('높임말 실행');
+            try {
+                const data = await postJSON(`${BASE_URL}/cohereHonorific`, {
+                    content,
+                });
+                const out = (
+                    data?.result ??
+                    data?.text ??
+                    data?.checked ??
+                    data?.styled_text ??
+                    data?.translated ??
+                    ''
+                ).trim();
+                if (!out) throw new Error('빈 결과');
+                apply(out);
+            } catch (e) {
+                alert('높임말 변환 실패: ' + e.message);
+            } finally {
+                console.log('텍스트 추출 모달에서 높임말 완료');
+            }
+            break;
+        case 'informal':
+            console.log('반말 실행');
+            try {
+                const data = await postJSON(`${BASE_URL}/cohereInformal`, {
+                    content,
+                });
+                const out = (
+                    data?.result ??
+                    data?.text ??
+                    data?.checked ??
+                    data?.styled_text ??
+                    data?.translated ??
+                    ''
+                ).trim();
+                if (!out) throw new Error('빈 결과');
+                apply(out);
+            } catch (e) {
+                alert('반말 변환 실패: ' + e.message);
+            } finally {
+                console.log('텍스트 추출 모달에서 반말 완료');
+            }
+            break;
+        case 'grammar':
+            console.log('문법 교정 실행');
+            if (content.length >= 300) {
+                alert(
+                    '글자 수가 300자를 초과했습니다. 300자 미만으로 써주십시오.'
+                );
+                return;
+            }
+            try {
+                const data = await postJSON(`${BASE_URL}/editorGrammar`, {
+                    content,
+                });
+
+                const out = (
+                    data?.checked ??
+                    data?.result ??
+                    data?.text ??
+                    ''
+                ).trim();
+                if (!out) throw new Error('빈 결과');
+
+                apply(out);
+                console.log('교정된 결과: ', data.checked);
+            } catch (e) {
+                alert('문법 교정 실패: ' + e.message);
+            } finally {
+                console.log('텍스트 추출 모달에서 문법 교정 완료');
+            }
+            break;
+    }
+
+    // 메뉴 닫기
+    e.currentTarget.hidden = true;
+});
+
+// 마우스 오버 시 서브메뉴 표시
+menu.addEventListener('mouseover', (e) => {
+    const target = e.target;
+
+    // 문체 변경 서브메뉴
+    if (target.dataset.action === 'style') {
+        const rect = target.getBoundingClientRect();
+        styleSubmenu.style.top = `${rect.top}px`;
+        styleSubmenu.style.left = `${rect.right + 4}px`;
+        styleSubmenu.hidden = false;
+        translateSubmenu.hidden = true;
+    }
+    // 번역 서브메뉴
+    else if (target.dataset.action === 'translate') {
+        const rect = target.getBoundingClientRect();
+        translateSubmenu.style.top = `${rect.top}px`;
+        translateSubmenu.style.left = `${rect.right + 4}px`;
+        translateSubmenu.hidden = false;
+        styleSubmenu.hidden = true;
+    } else if (
+        !styleSubmenu.contains(target) &&
+        !translateSubmenu.contains(target)
+    ) {
+        styleSubmenu.hidden = true;
+        translateSubmenu.hidden = true;
+    }
+});
+
+// 문체 변경 서브메뉴 클릭 동작
+styleSubmenu.addEventListener('click', async (e) => {
+    const subaction = e.target.dataset.subaction;
+    if (!subaction) return;
+    console.log(`문체 변경 → ${subaction} 실행`);
+    const { text, apply } = getQuillSelectionOrAll2();
+    const content = (text || '').trim();
+
+    if (!content) {
+        alert('내용을 입력하세요.');
+        return;
+    }
+
+    try {
+        const data = await postJSON(`${BASE_URL}/gptStyleChange`, {
+            text: content,
+            style: subaction, // ✅ 클릭된 data-subaction 전달
+        });
+
+        const out = (
+            data?.result ??
+            data?.text ??
+            data?.checked ??
+            data?.styled_text ??
+            data?.translated ??
+            ''
+        ).trim();
+
+        if (!out) throw new Error('빈 결과');
+        apply(out);
+        console.log(`문체변경 ${subaction} 완료`);
+    } catch (e) {
+        alert('문체변경 실패: ' + e.message);
+    } finally {
+        menu.hidden = true;
+        styleSubmenu.hidden = true;
+    }
+});
+
+// 번역 서브메뉴 클릭 동작
+translateSubmenu.addEventListener('click', async (e) => {
+    const lang = e.target.dataset.subaction;
+    if (!lang) return;
+
+    const { text, apply } = getQuillSelectionOrAll2();
+    const content = (text || '').trim();
+    if (!content) return alert('내용을 입력하세요.');
+
+    try {
+        const data = await postJSON(`${BASE_URL}/translate`, {
+            text: content,
+            source: 'auto',
+            target: lang, // ✅ 선택된 언어 코드 전달
+        });
+        const out = (
+            data?.result ??
+            data?.text ??
+            data?.checked ??
+            data?.styled_text ??
+            data?.translated ??
+            ''
+        ).trim();
+        if (!out) throw new Error('빈 결과');
+        apply(out);
+    } catch (e) {
+        alert('번역 실패: ' + e.message);
+    } finally {
+        menu.hidden = true;
+        translateSubmenu.hidden = true;
+    }
+});
