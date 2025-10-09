@@ -2643,20 +2643,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function setEditorText(text) {
-    quill.setText(text || '');
-}
-function getEditorText() {
-    return quill.getText();
-}
-
-function showSpin(v) {
-    document.documentElement.classList.toggle('is-edit-loading', !!v);
-
-    const el = document.getElementById('edit_spinner');
-    if (el) el.setAttribute('aria-hidden', String(!v));
-}
-
 function getEditorSelectionText() {
     try {
         if (window.quill) {
@@ -4285,3 +4271,186 @@ async function imagePromptChange() {
         };
     };
 })();
+
+// 페이지 전체에 한 번만 등록
+document.addEventListener('contextmenu', (e) => {
+    const quill2 = document.getElementById('quill2');
+    const menu = document.getElementById('customContextMenu');
+
+    // quill2가 열려 있고, 그 안에서 우클릭한 경우에만 작동
+    if (quill2 && quill2.contains(e.target)) {
+        e.preventDefault();
+
+        // 커스텀 메뉴 위치 조정
+        menu.style.top = `${e.pageY}px`;
+        menu.style.left = `${e.pageX}px`;
+        menu.hidden = false;
+    } else {
+        // 다른 곳 클릭 시 메뉴 숨김
+        menu.hidden = true;
+    }
+});
+
+// 클릭하면 메뉴 닫기
+document.addEventListener('click', () => {
+    document.getElementById('customContextMenu').hidden = true;
+});
+
+// 메뉴 클릭 동작 정의
+document
+    .getElementById('customContextMenu')
+    .addEventListener('click', async (e) => {
+        const action = e.target.dataset.action;
+        const { text, apply } = getQuillSelectionOrAll2();
+        const content = (text || '').trim();
+        if (!content) {
+            alert('내용을 입력하세요.');
+            return;
+        }
+
+        if (!action) return;
+
+        switch (action) {
+            case 'summary':
+                console.log('요약 기능 실행');
+
+                try {
+                    const data = await postJSON(`${BASE_URL}/summary`, {
+                        content,
+                    });
+                    const out = (
+                        data?.result ??
+                        data?.text ??
+                        data?.checked ??
+                        data?.styled_text ??
+                        data?.translated ??
+                        ''
+                    ).trim();
+                    if (!out) throw new Error('빈 결과');
+                    apply(out);
+                } catch (e) {
+                    alert('요약 실패: ' + e.message);
+                } finally {
+                    // showSpin(false);
+                    console.log('텍스트 추출 모달에서 요약 완료');
+                }
+                break;
+            case 'expand':
+                console.log('확장 기능 실행');
+                
+                try {
+                    const data = await postJSON(`${BASE_URL}/expand`, {
+                        content,
+                    }); // 확장 엔드포인트로 변경
+                    const out = (
+                        data?.result ??
+                        data?.text ??
+                        data?.checked ??
+                        data?.styled_text ??
+                        data?.translated ??
+                        ''
+                    ).trim();
+                    if (!out) throw new Error('빈 결과');
+                    apply(out);
+                } catch (e) {
+                    alert('확장 실패: ' + e.message);
+                } finally {
+                    console.log('텍스트 추출 모달에서 확장 완료');
+                }
+                break;
+            case 'rewrite':
+                console.log('재작성 실행');
+                
+                try {
+                    const data = await postJSON(`${BASE_URL}/mistralRewrite`, {
+                        content,
+                    });
+                    const out = (
+                        data?.result ??
+                        data?.text ??
+                        data?.styled_text ??
+                        data?.checked ??
+                        data?.translated ??
+                        ''
+                    ).trim();
+                    if (!out) throw new Error('빈 결과');
+
+                    apply(out);
+                } catch (e) {
+                    alert('첨삭 실패: ' + e.message);
+                } finally {
+                    console.log('텍스트 추출 모달에서 재작성 완료');
+                }
+                break;
+            case 'honorific':
+                console.log('높임말 실행');
+                try {
+                    const data = await postJSON(`${BASE_URL}/cohereHonorific`, {
+                        content,
+                    });
+                    const out = (
+                        data?.result ??
+                        data?.text ??
+                        data?.checked ??
+                        data?.styled_text ??
+                        data?.translated ??
+                        ''
+                    ).trim();
+                    if (!out) throw new Error('빈 결과');
+                    apply(out);
+                } catch (e) {
+                    alert('높임말 변환 실패: ' + e.message);
+                } finally {
+                    console.log('텍스트 추출 모달에서 높임말 완료');
+                }
+                break;
+            case 'informal':
+                console.log('반말 실행');
+                try {
+                    const data = await postJSON(`${BASE_URL}/cohereInformal`, {
+                        content,
+                    });
+                    const out = (
+                        data?.result ??
+                        data?.text ??
+                        data?.checked ??
+                        data?.styled_text ??
+                        data?.translated ??
+                        ''
+                    ).trim();
+                    if (!out) throw new Error('빈 결과');
+                    apply(out);
+                } catch (e) {
+                    alert('반말 변환 실패: ' + e.message);
+                } finally {
+                    console.log('텍스트 추출 모달에서 반말 완료');
+                }
+                break;
+            case 'grammar':
+                console.log('문법 교정 실행');
+                if (content.length >= 300) {
+                    alert('글자 수가 300자를 초과했습니다. 300자 미만으로 써주십시오.');
+                    return;
+                }
+                try {
+                    const data = await postJSON(`${BASE_URL}/editorGrammar`, {
+                        content,
+                    });
+            
+                    const out = (data?.checked ?? data?.result ?? data?.text ?? '').trim();
+                    if (!out) throw new Error('빈 결과');
+            
+                    apply(out);
+                    console.log('교정된 결과: ', data.checked);
+                } catch (e) {
+                    alert('문법 교정 실패: ' + e.message);
+                } finally {
+                    console.log('텍스트 추출 모달에서 문법 교정 완료');
+                }
+
+                break;
+        }
+
+        // 메뉴 닫기
+        e.currentTarget.hidden = true;
+    });
