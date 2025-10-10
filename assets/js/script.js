@@ -2768,26 +2768,6 @@ function getQuillSelectionOrAll2() {
     };
 }
 
-// [
-//     'btn-rewrite',
-//     'btn-summary',
-//     'btn-expand',
-//     'btn-style',
-//     'btn-honorific',
-//     'btn-informal',
-//     'btn-translate',
-//     'btn-grammar',
-// ].forEach((id) => {
-//     const b = document.getElementById(id);
-//     if (!b) return;
-//     b.addEventListener('mousedown', () => {
-//         window.__lastQuillRange = quill.getSelection(true);
-//     });
-// });
-// quill.on('selection-change', (range) => {
-//     window.__lastQuillRange = range;
-// });
-
 async function postJSON(url, payload) {
     const res = await fetch(url, {
         method: 'POST',
@@ -3332,7 +3312,6 @@ async function imagePromptChange() {
     }
 }
 
-// ===== Right Drawer=====
 (function () {
     'use strict';
     console.log('[sc-drawer] init');
@@ -3397,54 +3376,424 @@ async function imagePromptChange() {
     <button id="scChatNew"   class="sc-btn">새 대화</button>
   `,
         },
+
         translate: {
             title: '번역',
-            body: `<div class="sc-row">
-                         <select id="sourceSelector" class="sc-input"><option value="auto">자동</option><option value="ko">Korean</option><option value="en">English</option></select>
-                         <select id="targetSelector" class="sc-input"><option value="en">English</option><option value="ko">Korean</option></select>
-                         <textarea id="translateInput" class="sc-input" placeholder="번역할 문장"></textarea>
-                         <div id="translateResult" class="sc-result" aria-live="polite"></div>
-                       </div>`,
-            foot: `<button id="scTranslateRun" class="sc-btn sc-btn--primary">번역</button>`,
+            body: `
+    <div class="sc-tr">
+      <div class="sc-row">
+  <label class="sc-label">언어</label>
+
+
+  <div class="sc-tr__langs sc-tr__langs--one">
+    <span class="sc-inline-label__text">원본</span>
+    <div class="sc-select sc-select--lg sc-select--native">
+      <select id="trSource">
+        <option value="auto" selected>자동 감지</option>
+                            <option value="gu">구자라트어</option>
+                            <option value="el">그리스어</option>
+                            <option value="ne">네팔어</option>
+                            <option value="nl">네덜란드어</option>
+                            <option value="de">독일어</option>
+                            <option value="ru">러시아어</option>
+                            <option value="ro">루마니아어</option>
+                            <option value="mr">마라티어</option>
+                            <option value="ms">말레이어</option>
+                            <option value="vi">베트남어</option>
+                            <option value="bn">벵골어</option>
+                            <option value="sv">스웨덴어</option>
+                            <option value="es">스페인어</option>
+                            <option value="af">아프리칸스어</option>
+                            <option value="ar">아랍어</option>
+                            <option value="en">영어</option>
+                            <option value="uk">우크라이나어</option>
+                            <option value="it">이탈리아어</option>
+                            <option value="ja">일본어</option>
+                            <option value="jv">자바어</option>
+                            <option value="ka">조지아어</option>
+                            <option value="zh-CN">중국어(간체)</option>
+                            <option value="zh-TW">중국어(번체)</option>
+                            <option value="ta">타밀어</option>
+                            <option value="th">태국어</option>
+                            <option value="tr">터키어</option>
+                            <option value="fa">페르시아어</option>
+                            <option value="pt">포르투갈어</option>
+                            <option value="pl">폴란드어</option>
+                            <option value="fr">프랑스어</option>
+                            <option value="ko">한국어</option>
+                            <option value="hi">힌디어</option>
+                            </select>
+    </div>
+
+    <!-- 가운데 스왑 버튼 -->
+    <button type="button" class="sc-tr__swap" id="trSwap" aria-label="언어 교환" title="언어 교환(원본 ↔ 대상)">↔</button>
+
+    <span class="sc-inline-label__text">대상</span>
+    <div class="sc-select sc-select--lg sc-select--native">
+      <select id="trTarget">
+                            <option value="gu">구자라트어</option>
+                            <option value="el">그리스어</option>
+                            <option value="ne">네팔어</option>
+                            <option value="nl">네덜란드어</option>
+                            <option value="de">독일어</option>
+                            <option value="ru">러시아어</option>
+                            <option value="ro">루마니아어</option>
+                            <option value="mr">마라티어</option>
+                            <option value="ms">말레이어</option>
+                            <option value="vi">베트남어</option>
+                            <option value="bn">벵골어</option>
+                            <option value="sv">스웨덴어</option>
+                            <option value="es">스페인어</option>
+                            <option value="af">아프리칸스어</option>
+                            <option value="ar">아랍어</option>
+                            <option value="en">영어</option>
+                            <option value="uk">우크라이나어</option>
+                            <option value="it">이탈리아어</option>
+                            <option value="ja">일본어</option>
+                            <option value="jv">자바어</option>
+                            <option value="ka">조지아어</option>
+                            <option value="zh-CN">중국어(간체)</option>
+                            <option value="zh-TW">중국어(번체)</option>
+                            <option value="ta">타밀어</option>
+                            <option value="th">태국어</option>
+                            <option value="tr">터키어</option>
+                            <option value="fa">페르시아어</option>
+                            <option value="pt">포르투갈어</option>
+                            <option value="pl">폴란드어</option>
+                            <option value="fr">프랑스어</option>
+                            <option value="ko">한국어</option>
+                            <option value="hi">힌디어</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope">
+          <label class="sc-radio"><input type="radio" name="trScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="trScope" value="sel"> 드래그로 선택 <span id="trSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="trScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <div class="sc-row" id="trCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="trCustomInput" rows="5" class="textarea_SC" placeholder="번역할 문장을 입력하세요..."></textarea>
+      </div>
+
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="trResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scTranslateRun" class="sc-btn sc-btn--primary">번역</button>
+    <button id="trApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="trCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
+
         style: {
             title: '문체 변경',
-            body: `<div class="sc-row">
-                         <select id="styleSelector" class="sc-input">
-                           <option value="formal">격식체</option><option value="friendly">친근체</option><option value="concise">간결체</option>
-                         </select>
-                       </div>`,
-            foot: `<button id="scStyleRun" class="sc-btn sc-btn--primary">적용</button>`,
+            body: `
+    <div class="st">
+      <!-- 문체 선택 -->
+      <div class="sc-row">
+        <label class="sc-label">문체</label>
+        <div class="st-style-line">
+          <div class="sc-select sc-select--native">
+            <select id="stStyle">
+              <option value="casual">구어체</option>
+                            <option value="formal">격식체</option>
+                            <option value="literary">문학체</option>
+                            <option value="academic">학술체</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 대상 범위 -->
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope" id="stScopeWrap">
+          <label class="sc-radio"><input type="radio" name="stScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="stScope" value="sel"> 드래그로 선택 <span id="stSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="stScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="sc-row" id="stCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="stCustomInput" rows="5" class="textarea_SC" placeholder="문체를 바꿀 문장을 입력하세요..."></textarea>
+      </div>
+
+      <!-- 결과 -->
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="stResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scStyleRun" class="sc-btn sc-btn--primary">변환</button>
+    <button id="stApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="stCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
+
         honorific: {
             title: '높임말',
-            body: `<p class="sc-help">선택/전체를 경어체로 변환합니다.</p>`,
-            foot: `<button id="scHonorRun" class="sc-btn sc-btn--primary">실행</button>`,
+            body: `
+    <div class="hn">
+      <!-- 높임말 스타일 -->
+      <label class="sc-label">종결어미</label>
+      <div class="sc-row">
+       <label class="sc-label"종결어미</label>
+        <div class="hn-style-line">
+          <div class="sc-select sc-select--native">
+            <select id="hnLevel">
+              <option value="haeyo" selected>-해요</option>
+              <option value="hamnida">-합니다</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 대상 범위 -->
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope" id="hnScopeWrap">
+          <label class="sc-radio"><input type="radio" name="hnScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="hnScope" value="sel"> 드래그로 선택 <span id="hnSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="hnScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="sc-row" id="hnCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="hnCustomInput" rows="5" class="textarea_SC" placeholder="높임말로 바꿀 문장을 입력하세요..."></textarea>
+      </div>
+
+      <!-- 결과 -->
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="hnResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scHonorRun" class="sc-btn sc-btn--primary">변환</button>
+    <button id="hnApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="hnCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
+
         informal: {
             title: '반말',
-            body: `<p class="sc-help">선택/전체를 평어체로 변환합니다.</p>`,
-            foot: `<button id="scInformalRun" class="sc-btn sc-btn--primary">실행</button>`,
+            body: `
+    <div class="ifm">
+      <!-- 대상 범위 -->
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope" id="ifmScopeWrap">
+          <label class="sc-radio"><input type="radio" name="ifmScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="ifmScope" value="sel"> 드래그로 선택 <span id="ifmSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="ifmScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="sc-row" id="ifmCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="ifmCustomInput" rows="5" class="textarea_SC" placeholder="하다(다체)로 바꿀 문장을 입력해 줘"></textarea>
+      </div>
+
+      <!-- 결과 -->
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="ifmResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scInformalRun" class="sc-btn sc-btn--primary">변환</button>
+    <button id="ifmApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="ifmCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
+
         rewrite: {
             title: '재작성',
-            body: `<p class="sc-help">자연스러운 표현으로 재작성합니다.</p>`,
-            foot: `<button id="scRewriteRun" class="sc-btn sc-btn--primary">재작성</button>`,
+            body: `
+    <div class="rw">
+      <!-- 대상 범위 -->
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope" id="rwScopeWrap">
+          <label class="sc-radio"><input type="radio" name="rwScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="rwScope" value="sel"> 드래그로 선택 <span id="rwSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="rwScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="sc-row" id="rwCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="rwCustomInput" rows="5" class="textarea_SC" placeholder="자연스럽게 재작성할 문장을 입력하세요"></textarea>
+      </div>
+
+      <!-- 결과 -->
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="rwResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scRewriteRun" class="sc-btn sc-btn--primary">재작성</button>
+    <button id="rwApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="rwCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
+
         summary: {
             title: '요약',
-            body: `<p class="sc-help">핵심만 압축합니다.</p>`,
-            foot: `<button id="scSummaryRun" class="sc-btn sc-btn--primary">요약</button>`,
+            body: `
+    <div class="sm">
+      <!-- 요약 포맷 -->
+      <div class="sc-row">
+        <label class="sc-label">형식</label>
+        <div class="sm-style-line">
+          <div class="sc-select sc-select--native">
+            <select id="smFormat">
+              <option value="paragraph" selected>기본</option>
+              <option value="bullets">목록화</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 대상 범위 -->
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope" id="smScopeWrap">
+          <label class="sc-radio"><input type="radio" name="smScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="smScope" value="sel"> 드래그로 선택 <span id="smSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="smScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="sc-row" id="smCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="smCustomInput" rows="5" class="textarea_SC" placeholder="요약할 내용을 입력하세요"></textarea>
+      </div>
+
+      <!-- 결과 -->
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="smResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scSummaryRun" class="sc-btn sc-btn--primary">요약</button>
+    <button id="smApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="smCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
+
         expand: {
             title: '확장',
-            body: `<p class="sc-help">내용을 더 풍부하게 확장합니다.</p>`,
-            foot: `<button id="scExpandRun" class="sc-btn sc-btn--primary">확장</button>`,
+            body: `
+    <div class="ex">
+      <!-- 길이 & 문장개수 -->
+      <div class="sc-row ex-controls">
+        <div class="ex-control">
+  <label class="sc-label">길이 증가율</label>
+  <div class="sc-select sc-select--native">
+    <select id="exLenLevel">
+      <option value="low">가볍게</option>
+      <option value="medium" selected>보통</option>
+      <option value="high">많이</option>
+      <option value="xhigh">아주 많이</option>
+    </select>
+  </div>
+</div>
+
+        <div class="ex-control">
+          <label class="sc-label">추가 문장 수</label>
+          <input id="exSentences" class="sc-number" type="number" min="0" max="10" step="1" value="0" />
+        </div>
+      </div>
+
+      <!-- 대상 범위 -->
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope" id="exScopeWrap">
+          <label class="sc-radio"><input type="radio" name="exScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="exScope" value="sel"> 드래그한 부분 <span id="exSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="exScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="sc-row" id="exCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="exCustomInput" rows="6" class="textarea_SC" placeholder="확장할 텍스트를 입력하세요..."></textarea>
+      </div>
+
+      <!-- 결과 -->
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="exResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scExpandRun" class="sc-btn sc-btn--primary">확장</button>
+    <button id="exApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="exCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
+
         grammar: {
             title: '문법 교정',
-            body: `<p class="sc-help">맞춤법/문법을 교정합니다.</p>`,
-            foot: `<button id="scGrammarRun" class="sc-btn sc-btn--primary">교정</button>`,
+            body: `
+    <div class="gr">
+      <!-- 대상 범위 -->
+      <div class="sc-row">
+        <label class="sc-label">대상 범위</label>
+        <div class="sc-tr__scope" id="grScopeWrap">
+          <label class="sc-radio"><input type="radio" name="grScope" value="doc" checked> 문서 전체</label>
+          <label class="sc-radio"><input type="radio" name="grScope" value="sel"> 드래그한 부분 <span id="grSelCount" class="sc-meta"></span></label>
+          <label class="sc-radio"><input type="radio" name="grScope" value="input"> 직접 입력</label>
+        </div>
+      </div>
+
+      <!-- 직접 입력 -->
+      <div class="sc-row" id="grCustomWrap" hidden>
+        <label class="sc-label">입력 텍스트</label>
+        <textarea id="grCustomInput" rows="5" class="textarea_SC" placeholder="교정할 텍스트를 입력하세요 (300자 미만)"></textarea>
+        <div class="sc-help sm" id="grLenHint">0 / 300자</div>
+      </div>
+
+      <!-- 결과 -->
+      <div class="sc-section">
+        <div class="sc-label">결과</div>
+        <div id="grResult" class="sc-result sc-surface translateBox"></div>
+      </div>
+    </div>
+  `,
+            foot: `
+    <button id="scGrammarRun" class="sc-btn sc-btn--primary">교정</button>
+    <button id="grApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
+    <button id="grCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+  `,
         },
     };
 
@@ -3635,9 +3984,7 @@ async function imagePromptChange() {
                             const len = Math.max(0, q.getLength() - 1);
                             scope.textContent = `텍스트: 선택 없음 → 전체 문서(${len.toLocaleString()}자)`;
                         }
-                    } catch {
-                        /* noop */
-                    }
+                    } catch {}
                 }
                 updateScopeLabel();
                 if (window.quill?.on) {
@@ -4059,62 +4406,1644 @@ async function imagePromptChange() {
                 input?.focus();
                 break;
             }
-            case 'translate':
-                document
-                    .getElementById('scTranslateRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['applyTranslation', 'pdfScanTranslate'])
+            case 'translate': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+
+                const btnRun = $('#scTranslateRun');
+                const btnApply = $('#trApply');
+                const btnCopy = $('#trCopy');
+
+                const selCount = $('#trSelCount');
+                const wrapCustom = $('#trCustomWrap');
+                const inputCustom = $('#trCustomInput');
+
+                const srcSel = $('#trSource');
+                const tgtSel = $('#trTarget');
+
+                const wrap = document
+                    .getElementById('scDrawer')
+                    ?.querySelector('#trScopeWrap, .sc-tr__scope');
+                if (wrap && !wrap.id) wrap.id = 'trScopeWrap';
+
+                const swapBtn = $('#trSwap');
+                swapBtn?.addEventListener('click', () => {
+                    if (!srcSel || !tgtSel) return;
+                    const srcVal = srcSel.value;
+                    const tgtVal = tgtSel.value;
+
+                    if (srcVal === 'auto') {
+                        srcSel.value = tgtVal;
+                        swapBtn.classList.add('is-ping');
+                        setTimeout(
+                            () => swapBtn.classList.remove('is-ping'),
+                            260
+                        );
+                        return;
+                    }
+
+                    srcSel.value = tgtVal;
+                    tgtSel.value = srcVal;
+                    swapBtn.classList.add('is-rot');
+                    setTimeout(() => swapBtn.classList.remove('is-rot'), 240);
+                });
+
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'translate');
+
+                let last = null;
+
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            selCount && (selCount.textContent = '');
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (sel && sel.length > 0) {
+                            selCount.textContent = `(${sel.length.toLocaleString()}자 선택됨)`;
+                        } else {
+                            selCount.textContent = '(선택 없음)';
+                        }
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="trScope"]:checked'
                     );
-                break;
-            case 'style':
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    wrapCustom.hidden = currentScope() !== 'input';
+                }
                 document
-                    .getElementById('scStyleRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['applyStyle', 'gptStyleChange'])
+                    .querySelectorAll('#scDrawer input[name="trScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                async function mockTranslate(text, src, tgt) {
+                    if (!text) return '';
+                    return `[${src}→${tgt}] ${text}`;
+                }
+
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const src = srcSel?.value || 'auto';
+                    const tgt = tgtSel?.value || 'ko';
+                    const q = window.quill;
+
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                        if (!text.trim()) {
+                            $('#trResult').textContent = '문서가 비어 있어요.';
+                            return;
+                        }
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#trResult').textContent = '에디터가 없어요.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#trResult').textContent =
+                                '선택된 내용이 없어요.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#trResult').textContent =
+                                '번역할 텍스트를 입력해 주세요.';
+                            return;
+                        }
+                    }
+
+                    let out = '';
+                    try {
+                        const r = await postJSON(`${BASE_URL}/translate`, {
+                            text,
+                            source: src,
+                            target: tgt,
+                        });
+                        out = (
+                            r?.translated ||
+                            r?.result ||
+                            r?.text ||
+                            ''
+                        ).toString();
+                    } catch {
+                        out = await mockTranslate(text, src, tgt);
+                    }
+
+                    $('#trResult').textContent = out;
+                    btnApply.disabled = btnCopy.disabled = !(out && out.length);
+                    last = {
+                        out,
+                        scope,
+                        rangeSnap: range || null, // 실행 시점의 선택영역 스냅샷
+                        first: true, // 첫 적용인지
+                    };
+                });
+
+                // 적용
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    // 1) 문서 전체 모드: 최초 1회만 전체 치환
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    // 2) 선택 앵커 결정: 최초 1회는 실행 당시 스냅샷, 이후엔 "현재 선택/커서"
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    // 3) 선택 치환 또는 커서 삽입
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    // 4) 이후부터는 스냅샷 비활성
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                // 복사
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#trResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
                     );
+                });
+
+                if (currentScope() === 'sel' && window.quill) {
+                    try {
+                        window.quill.focus();
+                    } catch {}
+                }
                 break;
-            case 'honorific':
+            }
+
+            case 'style': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'style');
+
+                const btnRun = $('#scStyleRun');
+                const btnApply = $('#stApply');
+                const btnCopy = $('#stCopy');
+
+                const selCount = $('#stSelCount');
+                const wrapCustom = $('#stCustomWrap');
+                const inputCustom = $('#stCustomInput');
+                const styleSel = $('#stStyle');
+
+                let last = null;
+
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            if (selCount) selCount.textContent = '';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (sel && sel.length > 0)
+                            selCount.textContent = `(${sel.length.toLocaleString()}자 선택됨)`;
+                        else selCount.textContent = '(선택 없음)';
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="stScope"]:checked'
+                    );
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    wrapCustom.hidden = currentScope() !== 'input';
+                }
                 document
-                    .getElementById('scHonorRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['cohereHonorific', 'doHonorific'])
+                    .querySelectorAll('#scDrawer input[name="stScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                // 실행
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const q = window.quill;
+                    const style = styleSel?.value || 'formal';
+
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                        if (!text.trim()) {
+                            $('#stResult').textContent = '문서가 비어 있어요.';
+                            return;
+                        }
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#stResult').textContent = '에디터가 없어요.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#stResult').textContent =
+                                '선택된 내용이 없어요.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#stResult').textContent =
+                                '변환할 텍스트를 입력해 주세요.';
+                            return;
+                        }
+                    }
+
+                    let out = '';
+                    try {
+                        const r = await postJSON(`${BASE_URL}/gptStyleChange`, {
+                            text,
+                            style,
+                        });
+                        out = (
+                            r?.result ||
+                            r?.text ||
+                            r?.styled_text ||
+                            ''
+                        ).toString();
+                    } catch {
+                        out = `【${style}】\n\n${text}`;
+                    }
+
+                    $('#stResult').textContent = out;
+                    btnApply.disabled = btnCopy.disabled = !(out && out.length);
+                    last = {
+                        out,
+                        scope,
+                        rangeSnap: range || null,
+                        first: true,
+                    };
+                });
+
+                // 적용
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    // 문서 전체 모드: 최초 1회만 전체 치환
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    // 선택 앵커: 최초 1회는 스냅샷, 이후엔 현재 선택/커서
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                // 복사
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#stResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
                     );
+                });
+
                 break;
-            case 'informal':
+            }
+
+            case 'honorific': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'honorific');
+
+                const btnRun = $('#scHonorRun');
+                const btnApply = $('#hnApply');
+                const btnCopy = $('#hnCopy');
+                const wrapCustom = $('#hnCustomWrap');
+                const inputCustom = $('#hnCustomInput');
+                const selCount = $('#hnSelCount');
+                const levelSel = $('#hnLevel');
+
+                let last = null;
+
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            if (selCount) selCount.textContent = '';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        selCount.textContent =
+                            sel && sel.length > 0
+                                ? `(${sel.length.toLocaleString()}자 선택됨)`
+                                : '(선택 없음)';
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="hnScope"]:checked'
+                    );
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    wrapCustom.hidden = currentScope() !== 'input';
+                    if (!wrapCustom.hidden) {
+                        setTimeout(() => {
+                            document
+                                .getElementById('hnCustomInput')
+                                ?.scrollIntoView({
+                                    block: 'start',
+                                    behavior: 'smooth',
+                                });
+                        }, 0);
+                    }
+                }
                 document
-                    .getElementById('scInformalRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['cohereInformal', 'doInformal'])
+                    .querySelectorAll('#scDrawer input[name="hnScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                // 실행
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const q = window.quill;
+                    const level = levelSel?.value || 'haeyo';
+
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                        if (!text.trim()) {
+                            $('#hnResult').textContent = '문서가 비어 있어요.';
+                            return;
+                        }
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#hnResult').textContent = '에디터가 없어요.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#hnResult').textContent =
+                                '선택된 내용이 없어요.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#hnResult').textContent =
+                                '변환할 텍스트를 입력해 주세요.';
+                            return;
+                        }
+                    }
+
+                    let out = '';
+                    try {
+                        const r = await postJSON(
+                            `${BASE_URL}/cohereHonorific`,
+                            { content: text, level }
+                        );
+                        out = (r?.checked || r?.result || r?.text || '')
+                            .toString()
+                            .trim();
+                        if (!out) throw new Error('빈 결과');
+                    } catch {
+                        const tag =
+                            level === 'hamnida'
+                                ? '합니다체'
+                                : level === 'hasipsio'
+                                ? '하십시오체'
+                                : '해요체';
+                        out = `【높임말 변환: ${tag}】\n\n${text}`;
+                    }
+
+                    $('#hnResult').textContent = out;
+                    btnApply.disabled = btnCopy.disabled = !(out && out.length);
+                    $('#hnResult')?.scrollIntoView({
+                        block: 'start',
+                        behavior: 'smooth',
+                    });
+
+                    last = {
+                        out,
+                        scope,
+                        rangeSnap: range || null,
+                        first: true,
+                    };
+                });
+
+                // 적용
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                // 복사
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#hnResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
                     );
+                });
+
                 break;
-            case 'rewrite':
+            }
+
+            case 'informal': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'informal');
+
+                const btnRun = $('#scInformalRun');
+                const btnApply = $('#ifmApply');
+                const btnCopy = $('#ifmCopy');
+                const wrapCustom = $('#ifmCustomWrap');
+                const inputCustom = $('#ifmCustomInput');
+                const selCount = $('#ifmSelCount');
+
+                let last = null;
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            selCount && (selCount.textContent = '');
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        selCount.textContent =
+                            sel && sel.length > 0
+                                ? `(${sel.length.toLocaleString()}자 선택됨)`
+                                : '(선택 없음)';
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="ifmScope"]:checked'
+                    );
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    wrapCustom.hidden = currentScope() !== 'input';
+                    if (!wrapCustom.hidden) {
+                        setTimeout(() => {
+                            document
+                                .getElementById('ifmCustomInput')
+                                ?.scrollIntoView({
+                                    block: 'start',
+                                    behavior: 'smooth',
+                                });
+                        }, 0);
+                    }
+                }
                 document
-                    .getElementById('scRewriteRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['mistralRewrite', 'doRewrite'])
+                    .querySelectorAll('#scDrawer input[name="ifmScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                // 실행
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const q = window.quill;
+
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                        if (!text.trim()) {
+                            $('#ifmResult').textContent = '문서가 비어 있어.';
+                            return;
+                        }
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#ifmResult').textContent = '에디터가 없어.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#ifmResult').textContent = '선택한 내용이 없어.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#ifmResult').textContent =
+                                '변환할 텍스트를 입력해 줘.';
+                            return;
+                        }
+                    }
+
+                    let out = '';
+                    try {
+                        const r = await postJSON(`${BASE_URL}/cohereInformal`, {
+                            content: text,
+                            ending: 'hada',
+                        });
+                        out = (r?.checked || r?.result || r?.text || '')
+                            .toString()
+                            .trim();
+                        if (!out) throw new Error('빈 결과');
+                    } catch {
+                        out = `【반말 변환: 하다】\n\n${text}`;
+                    }
+
+                    $('#ifmResult').textContent = out;
+                    btnApply.disabled = btnCopy.disabled = !(out && out.length);
+                    $('#ifmResult')?.scrollIntoView({
+                        block: 'start',
+                        behavior: 'smooth',
+                    });
+
+                    last = {
+                        out,
+                        scope,
+                        rangeSnap: range || null,
+                        first: true,
+                    };
+                });
+
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                // 복사
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#ifmResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
                     );
+                });
+
                 break;
-            case 'summary':
+            }
+
+            case 'rewrite': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'rewrite');
+
+                const btnRun = $('#scRewriteRun');
+                const btnApply = $('#rwApply');
+                const btnCopy = $('#rwCopy');
+                const wrapCustom = $('#rwCustomWrap');
+                const inputCustom = $('#rwCustomInput');
+                const selCount = $('#rwSelCount');
+
+                let last = null;
+
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            selCount && (selCount.textContent = '');
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        selCount.textContent =
+                            sel && sel.length > 0
+                                ? `(${sel.length.toLocaleString()}자 선택됨)`
+                                : '(선택 없음)';
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="rwScope"]:checked'
+                    );
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    wrapCustom.hidden = currentScope() !== 'input';
+                    if (!wrapCustom.hidden) {
+                        setTimeout(() => {
+                            document
+                                .getElementById('rwCustomInput')
+                                ?.scrollIntoView({
+                                    block: 'start',
+                                    behavior: 'smooth',
+                                });
+                        }, 0);
+                    }
+                }
                 document
-                    .getElementById('scSummaryRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['summarizeText', 'doSummary'])
+                    .querySelectorAll('#scDrawer input[name="rwScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                // 실행
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const q = window.quill;
+
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                        if (!text.trim()) {
+                            $('#rwResult').textContent = '문서가 비어 있어요.';
+                            return;
+                        }
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#rwResult').textContent = '에디터가 없어요.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#rwResult').textContent =
+                                '선택된 내용이 없어요.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#rwResult').textContent =
+                                '재작성할 텍스트를 입력해 주세요.';
+                            return;
+                        }
+                    }
+
+                    let out = '';
+                    try {
+                        const r = await postJSON(`${BASE_URL}/mistralRewrite`, {
+                            content: text,
+                        });
+                        out = (
+                            r?.result ||
+                            r?.text ||
+                            r?.styled_text ||
+                            r?.checked ||
+                            ''
+                        )
+                            .toString()
+                            .trim();
+                        if (!out) throw new Error('빈 결과');
+                    } catch {
+                        out = `[재작성 예시]\n\n${text}`;
+                    }
+
+                    $('#rwResult').textContent = out;
+                    btnApply.disabled = btnCopy.disabled = !(out && out.length);
+
+                    $('#rwResult')?.scrollIntoView({
+                        block: 'start',
+                        behavior: 'smooth',
+                    });
+
+                    last = {
+                        out,
+                        scope,
+                        rangeSnap: range || null,
+                        first: true,
+                    };
+                });
+
+                // 적용
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                // 복사
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#rwResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
                     );
+                });
+
                 break;
-            case 'expand':
+            }
+
+            case 'summary': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'summary');
+
+                const btnRun = $('#scSummaryRun');
+                const btnApply = $('#smApply');
+                const btnCopy = $('#smCopy');
+                const wrapCustom = $('#smCustomWrap');
+                const inputCustom = $('#smCustomInput');
+                const selCount = $('#smSelCount');
+                const fmtSel = $('#smFormat');
+
+                let last = null;
+
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            selCount && (selCount.textContent = '');
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        selCount.textContent =
+                            sel && sel.length > 0
+                                ? `(${sel.length.toLocaleString()}자 선택됨)`
+                                : '(선택 없음)';
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="smScope"]:checked'
+                    );
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    wrapCustom.hidden = currentScope() !== 'input';
+                    if (!wrapCustom.hidden) {
+                        setTimeout(() => {
+                            document
+                                .getElementById('smCustomInput')
+                                ?.scrollIntoView({
+                                    block: 'start',
+                                    behavior: 'smooth',
+                                });
+                        }, 0);
+                    }
+                }
                 document
-                    .getElementById('scExpandRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['expandText', 'doExpand'])
+                    .querySelectorAll('#scDrawer input[name="smScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                function toBullets(txt) {
+                    const lines = txt
+                        .split(/\r?\n/)
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+
+                    if (
+                        lines.some(
+                            (l) =>
+                                /^[•\-\*]\s+/.test(l) || /^\d+[\.\)]\s+/.test(l)
+                        )
+                    ) {
+                        return lines
+                            .map((l) =>
+                                l
+                                    .replace(/^[•\-\*]\s+/, '')
+                                    .replace(/^\d+[\.\)]\s+/, '')
+                            )
+                            .map((l) => `• ${l}`)
+                            .join('\n');
+                    }
+                    // 문장으로 나눠 불릿화
+                    let s = txt.replace(/([.!?])\s+/g, '$1\n');
+                    const parts = s
+                        .split('\n')
+                        .map((v) => v.trim())
+                        .filter(Boolean);
+                    return parts.map((p) => `• ${p}`).join('\n');
+                }
+
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const q = window.quill;
+                    const format = fmtSel?.value || 'paragraph';
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                        if (!text.trim()) {
+                            $('#smResult').textContent = '문서가 비어 있어요.';
+                            return;
+                        }
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#smResult').textContent = '에디터가 없어요.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#smResult').textContent =
+                                '선택된 내용이 없어요.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#smResult').textContent =
+                                '요약할 텍스트를 입력해 주세요.';
+                            return;
+                        }
+                    }
+
+                    let out = '';
+                    try {
+                        const r = await postJSON(`${BASE_URL}/summary`, {
+                            content: text,
+                            format,
+                        });
+                        out = (r?.result || r?.text || r?.checked || '')
+                            .toString()
+                            .trim();
+                        if (!out) throw new Error('빈 결과');
+                    } catch {
+                        out =
+                            text.slice(0, 160) + (text.length > 160 ? '…' : '');
+                    }
+
+                    if (format === 'bullets') {
+                        out = toBullets(out);
+                    }
+
+                    $('#smResult').textContent = out;
+                    btnApply.disabled = btnCopy.disabled = !(out && out.length);
+
+                    $('#smResult')?.scrollIntoView({
+                        block: 'start',
+                        behavior: 'smooth',
+                    });
+
+                    last = {
+                        out,
+                        scope,
+                        rangeSnap: range || null,
+                        first: true,
+                    };
+                });
+
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#smResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
                     );
+                });
+
                 break;
-            case 'grammar':
+            }
+
+            case 'expand': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'expand');
+
+                const btnRun = $('#scExpandRun');
+                const btnApply = $('#exApply');
+                const btnCopy = $('#exCopy');
+
+                const selCount = $('#exSelCount');
+                const wrapCustom = $('#exCustomWrap');
+                const inputCustom = $('#exCustomInput');
+
+                const lenLevelSel = $('#exLenLevel');
+                const nSent = $('#exSentences');
+
+                const LEN_PRESET = {
+                    low: 20,
+                    medium: 50,
+                    high: 80,
+                    xhigh: 100,
+                };
+
+                let last = null;
+
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            selCount && (selCount.textContent = '');
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        selCount.textContent =
+                            sel && sel.length > 0
+                                ? `(${sel.length.toLocaleString()}자 선택됨)`
+                                : '(선택 없음)';
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="exScope"]:checked'
+                    );
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    const show = currentScope() === 'input';
+                    wrapCustom.hidden = !show;
+                    if (show) setTimeout(() => inputCustom?.focus(), 0);
+                }
                 document
-                    .getElementById('scGrammarRun')
-                    ?.addEventListener('click', () =>
-                        callFirst(['mistralGrammar', 'doGrammar'])
+                    .querySelectorAll('#scDrawer input[name="exScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                // 실행
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const q = window.quill;
+
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                        if (!text.trim()) {
+                            $('#exResult').textContent = '문서가 비어 있어요.';
+                            return;
+                        }
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#exResult').textContent = '에디터가 없어요.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#exResult').textContent =
+                                '선택된 내용이 없어요.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#exResult').textContent =
+                                '확장할 텍스트를 입력해 주세요.';
+                            return;
+                        }
+                    }
+
+                    const levelKey = lenLevelSel?.value || 'medium';
+                    const length_boost = LEN_PRESET[levelKey] ?? 50;
+                    const add_sentences = Math.max(
+                        0,
+                        Math.min(50, parseInt(nSent?.value || '0', 10))
                     );
+
+                    btnApply.disabled = btnCopy.disabled = true;
+                    $('#exResult').textContent = '확장 중…';
+
+                    try {
+                        const r = await postJSON(`${BASE_URL}/expand`, {
+                            content: text,
+                            length_boost,
+                            length_level: levelKey,
+                            add_sentences,
+                        });
+                        const out = (r?.result || r?.text || '')
+                            .toString()
+                            .trim();
+                        if (!out) {
+                            $('#exResult').textContent = '빈 결과입니다.';
+                            return;
+                        }
+
+                        $('#exResult').textContent = out;
+                        btnApply.disabled = btnCopy.disabled = !(
+                            out && out.length
+                        );
+
+                        if (scope === 'input') {
+                            document
+                                .getElementById('exResult')
+                                ?.scrollIntoView({
+                                    block: 'start',
+                                    behavior: 'smooth',
+                                });
+                        }
+
+                        last = {
+                            out,
+                            scope,
+                            rangeSnap: range || null,
+                            first: true,
+                        };
+                    } catch (e) {
+                        $('#exResult').textContent =
+                            '확장 실패: ' + (e?.message || e);
+                    }
+                });
+
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                // 복사
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#exResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
+                    );
+                });
+
                 break;
+            }
+
+            case 'grammar': {
+                const $ = (sel) =>
+                    document.getElementById('scDrawer')?.querySelector(sel);
+
+                const drawer = document.getElementById('scDrawer');
+                drawer?.setAttribute('data-panel', 'grammar');
+
+                const btnRun = $('#scGrammarRun');
+                const btnApply = $('#grApply');
+                const btnCopy = $('#grCopy');
+
+                const wrapCustom = $('#grCustomWrap');
+                const inputCustom = $('#grCustomInput');
+                const lenHint = $('#grLenHint');
+                const selCount = $('#grSelCount');
+
+                let last = null;
+
+                function updateSelectionMeta() {
+                    try {
+                        const q = window.quill;
+                        if (!q) {
+                            selCount && (selCount.textContent = '');
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        selCount.textContent =
+                            sel && sel.length > 0
+                                ? `(${sel.length.toLocaleString()}자 선택됨)`
+                                : '(선택 없음)';
+                    } catch {}
+                }
+                updateSelectionMeta();
+                if (window.quill?.on) {
+                    window.quill.on('selection-change', updateSelectionMeta);
+                    window.quill.on('text-change', updateSelectionMeta);
+                }
+
+                function currentScope() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="grScope"]:checked'
+                    );
+                    return r ? r.value : 'doc';
+                }
+                function syncCustomWrap() {
+                    const show = currentScope() === 'input';
+                    wrapCustom.hidden = !show;
+                    if (show) {
+                        setTimeout(() => {
+                            inputCustom?.focus();
+                            inputCustom?.scrollIntoView({
+                                block: 'start',
+                                behavior: 'smooth',
+                            });
+                        }, 0);
+                    }
+                }
+                document
+                    .querySelectorAll('#scDrawer input[name="grScope"]')
+                    .forEach((r) => {
+                        r.addEventListener('change', syncCustomWrap);
+                    });
+                syncCustomWrap();
+
+                inputCustom?.addEventListener('input', () => {
+                    const n = (inputCustom.value || '').length;
+                    if (lenHint)
+                        lenHint.textContent = `${n.toLocaleString()} / 300자`;
+                    if (n > 300) lenHint.style.color = '#ef4444';
+                    else lenHint.style.color = '';
+                });
+
+                // 실행
+                btnRun?.addEventListener('click', async () => {
+                    const scope = currentScope();
+                    const q = window.quill;
+
+                    let text = '';
+                    let range = null;
+
+                    if (scope === 'doc') {
+                        text = q
+                            ? q.getText(0, Math.max(0, q.getLength() - 1))
+                            : '';
+                    } else if (scope === 'sel') {
+                        if (!q) {
+                            $('#grResult').textContent = '에디터가 없어요.';
+                            return;
+                        }
+                        const sel = q.getSelection();
+                        if (!sel || sel.length === 0) {
+                            $('#grResult').textContent =
+                                '선택된 내용이 없어요.';
+                            return;
+                        }
+                        text = q.getText(sel.index, sel.length);
+                        range = sel;
+                    } else {
+                        text = (inputCustom?.value || '').trim();
+                        if (!text) {
+                            $('#grResult').textContent =
+                                '교정할 텍스트를 입력해 주세요.';
+                            return;
+                        }
+                    }
+
+                    const len = (text || '').length;
+                    if (len >= 300) {
+                        $('#grResult').textContent =
+                            '⚠️ 300자 미만으로 선택하거나 직접 입력해 주세요.';
+                        return;
+                    }
+
+                    // 호출
+                    btnApply.disabled = btnCopy.disabled = true;
+                    $('#grResult').textContent = '교정 중…';
+                    try {
+                        const r = await postJSON(`${BASE_URL}/editorGrammar`, {
+                            content: text,
+                        });
+                        const out = (r?.checked ?? r?.result ?? r?.text ?? '')
+                            .toString()
+                            .trim();
+                        if (!out) {
+                            $('#grResult').textContent = '빈 결과입니다.';
+                            return;
+                        }
+
+                        $('#grResult').textContent = out;
+                        btnApply.disabled = btnCopy.disabled = !(
+                            out && out.length
+                        );
+
+                        if (scope === 'input') {
+                            document
+                                .getElementById('grResult')
+                                ?.scrollIntoView({
+                                    block: 'start',
+                                    behavior: 'smooth',
+                                });
+                        }
+
+                        last = {
+                            out,
+                            scope,
+                            rangeSnap: range || null,
+                            first: true,
+                        };
+                    } catch (e) {
+                        $('#grResult').textContent =
+                            '문법 교정 실패: ' + (e?.message || e);
+                    }
+                });
+
+                // 적용
+                btnApply?.addEventListener('click', () => {
+                    if (!last?.out) return;
+                    const q = window.quill;
+                    if (!q) return;
+
+                    const docLen = Math.max(0, q.getLength() - 1);
+
+                    if (last.scope === 'doc' && last.first) {
+                        q.setText(last.out);
+                        q.setSelection(
+                            Math.max(0, last.out.length - 1),
+                            0,
+                            'silent'
+                        );
+                        last.first = false;
+                        last.rangeSnap = null;
+                        return;
+                    }
+
+                    const liveSel = q.getSelection(true);
+                    const sel =
+                        last.first && last.rangeSnap
+                            ? last.rangeSnap
+                            : liveSel || { index: docLen, length: 0 };
+
+                    if (sel.length > 0) {
+                        q.deleteText(sel.index, sel.length, 'user');
+                        q.insertText(sel.index, last.out, 'user');
+                        q.setSelection(
+                            sel.index + last.out.length,
+                            0,
+                            'silent'
+                        );
+                    } else {
+                        const pos =
+                            typeof sel.index === 'number' ? sel.index : docLen;
+                        q.insertText(pos, last.out, 'user');
+                        q.setSelection(pos + last.out.length, 0, 'silent');
+                    }
+
+                    last.first = false;
+                    last.rangeSnap = null;
+                });
+
+                // 복사
+                btnCopy?.addEventListener('click', async () => {
+                    const txt = ($('#grResult')?.textContent || '').trim();
+                    if (!txt) return;
+                    await navigator.clipboard.writeText(txt);
+                    const b = btnCopy;
+                    b.textContent = '복사됨';
+                    setTimeout(
+                        () => (b.textContent = '마지막 응답 복사'),
+                        1200
+                    );
+                });
+
+                break;
+            }
         }
     }
 
