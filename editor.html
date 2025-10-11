@@ -250,6 +250,13 @@
             >
                 <i class="bi bi-file-earmark-text"></i> 텍스트 추출
             </button>
+            <!-- 숨겨진 파일 input을 미리 DOM에 추가 -->
+            <input
+                type="file"
+                id="ocrFileInput"
+                accept="image/*,.pdf"
+                style="display: none"
+            />
         </div>
         <!-- OCR 결과 팝업 -->
         <div

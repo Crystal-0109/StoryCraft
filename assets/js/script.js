@@ -2540,100 +2540,104 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ③ 텍스트 추출
-        if (e.target.closest('#imgMenu-ocr')) {
-            // 에디터 초기화 (이미 만들어졌으면 재생성하지 않음)
+        // if (e.target.closest('#imgMenu-ocr')) {
+        //
+        // }
+    });
+
+    // 전역 또는 초기화 코드 — 페이지 로딩 시 한 번만 실행
+    const ocrFileInput = document.getElementById('ocrFileInput');
+    const imgMenuocr = document.getElementById('imgMenu-ocr');
+
+    // 버튼 클릭 시 파일 선택창 열기 (한 번만 등록)
+    imgMenuocr.addEventListener('click', () => {
+        ocrFileInput.value = ''; // 초기화
+        ocrFileInput.click(); // 파일 선택창 열기
+    });
+
+    // 파일 선택 후 OCR 처리 시작
+    ocrFileInput.addEventListener('change', () => {
+        const file = ocrFileInput.files[0];
+        if (!file) return;
+        handleOCR(file);
+    });
+
+    // 실제 OCR 처리 로직
+    async function handleOCR(file) {
+        openModal('추출 중… 잠시만요.');
+        spin(true);
+
+        try {
+            const isPDF = /\.pdf$/i.test(file.name);
+            const EP = isPDF ? OCR.pdf : OCR.image;
+            const url = joinUrl(OCR.base, EP.url);
+
+            let out = '';
+
+            // 서버 OCR 시도
+            try {
+                const fd = new FormData();
+                fd.append(EP.field, file);
+                const init = { method: EP.method };
+                if (EP.method.toUpperCase() === 'POST') init.body = fd;
+
+                const res = await fetch(url, init);
+                const ct = (
+                    res.headers.get('content-type') || ''
+                ).toLowerCase();
+
+                if (!res.ok)
+                    throw Object.assign(new Error('HTTP ' + res.status), {
+                        status: res.status,
+                        ct,
+                    });
+
+                if (ct.includes('application/json')) {
+                    const j = await res.json();
+                    console.log('OCR response:', j);
+                    out =
+                        (typeof _pickText === 'function' ? _pickText(j) : '') ||
+                        JSON.stringify(j, null, 2);
+                } else {
+                    out = await res.text();
+                }
+            } catch (srvErr) {
+                const status = srvErr?.status || 0;
+                const methodProblem = status === 405 || status === 404;
+
+                if (
+                    !isPDF &&
+                    (methodProblem || !navigator.onLine || status === 0) &&
+                    window.Tesseract
+                ) {
+                    console.warn(
+                        'Server OCR failed, fallback to Tesseract.js:',
+                        srvErr
+                    );
+                    const { data } = await Tesseract.recognize(file, 'kor+eng');
+                    out = data && data.text ? data.text : '';
+                } else {
+                    throw srvErr;
+                }
+            }
+
+            // 에디터 초기화 (필요 시 한 번만 생성)
             if (!quill2) {
                 quill2 = new Quill('#quill2', {
                     theme: 'snow',
                     placeholder: '여기에 문서를 작성하세요…',
-                    modules: { toolbar: false }, // 툴바 제거
+                    modules: { toolbar: false },
                 });
             }
 
-            const { fileIn } = _ocrRefs();
-            const file = fileIn?.files?.[0];
-            if (!file) {
-                openModal('먼저 파일을 선택해 주세요.');
-                return;
-            }
-
-            openModal('추출 중… 잠시만요.');
-            // if (txtArea) txtArea.disabled = true;
-            spin(true);
-
-            try {
-                const isPDF = /\.pdf$/i.test(file.name);
-                const EP = isPDF ? OCR.pdf : OCR.image; // 엔드포인트 선택
-                const url = joinUrl(OCR.base, EP.url);
-
-                let out = '';
-
-                // 서버 시도
-                try {
-                    const fd = new FormData();
-                    fd.append(EP.field, file);
-                    const init = { method: EP.method };
-                    if (EP.method.toUpperCase() === 'POST') init.body = fd;
-
-                    const res = await fetch(url, init);
-                    const ct = (
-                        res.headers.get('content-type') || ''
-                    ).toLowerCase();
-
-                    if (!res.ok)
-                        throw Object.assign(new Error('HTTP ' + res.status), {
-                            status: res.status,
-                            ct,
-                        });
-                    if (ct.includes('application/json')) {
-                        const j = await res.json();
-                        console.log('OCR response:', j);
-                        out =
-                            (typeof _pickText === 'function'
-                                ? _pickText(j)
-                                : '') || JSON.stringify(j, null, 2);
-                    } else {
-                        out = await res.text();
-                    }
-                } catch (srvErr) {
-                    // 405(메서드 불가)·404(경로 없음)·CORS/네트워크 실패 → 이미지면 브라우저 OCR 폴백
-                    const status = srvErr?.status || 0;
-                    const methodProblem = status === 405 || status === 404;
-                    if (
-                        !isPDF &&
-                        (methodProblem || !navigator.onLine || status === 0) &&
-                        window.Tesseract
-                    ) {
-                        console.warn(
-                            'Server OCR failed, fallback to Tesseract.js:',
-                            srvErr
-                        );
-                        const { data } = await Tesseract.recognize(
-                            file,
-                            'kor+eng'
-                        ); // 언어는 필요에 맞게
-                        out = data && data.text ? data.text : '';
-                    } else {
-                        throw srvErr; // PDF이거나 폴백 불가면 상위 catch로
-                    }
-                }
-
-                const refs = _ocrRefs();
-                // if (refs.txtArea)
-                //     refs.txtArea.value = (out || '').toString().trim();
-
-                quill2.setText(out);
-            } catch (err) {
-                const refs = _ocrRefs();
-                // if (refs.txtArea) refs.txtArea.value = '';
-                alert('이미지 추출 실패: ' + (err?.message || err));
-            } finally {
-                const refs = _ocrRefs();
-                // if (refs.txtArea) refs.txtArea.disabled = false;
-                spin(false);
-            }
+            quill2.setText(out);
+        } catch (err) {
+            alert('텍스트 추출 실패: ' + (err?.message || err));
+        } finally {
+            spin(false);
+            console.log('텍스트 추출 완료');
         }
-    });
+    }
 
     // (옵션) 외부에서 강제로 열고 싶을 때
     document.addEventListener('editor:open-ocr', () => {
@@ -3261,7 +3265,7 @@ async function imagePromptChange() {
         alert('내용을 입력하세요.');
         return;
     }
-    showSpin(true);
+    // spin(true);
     if (hasWord) {
         try {
             const response = await fetch(`${BASE_URL}/promptAdd`, {
@@ -3286,7 +3290,8 @@ async function imagePromptChange() {
         } catch {
             alert('프롬프트 추가 실패: ' + e.message);
         } finally {
-            showSpin(false);
+            // spin(false);
+            console.log('텍스트 추출 프롬프트 적용 완료');
         }
     } else {
         try {
