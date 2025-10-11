@@ -212,7 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editorPdfDownloadBtn) {
         editorPdfDownloadBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            saveAsPDF();
+            // saveAsPDF();
+            editorPdfDownload();
         });
     }
     const editorStartRecord = document.getElementById('editorStartRecord');
@@ -6500,3 +6501,22 @@ translateSubmenu.addEventListener('click', async (e) => {
         translateSubmenu.hidden = true;
     }
 });
+
+async function editorPdfDownload() {
+    if (!window.quill) return alert('에디터가 아직 준비되지 않았어요.');
+    const content = quill.root;
+    html2pdf()
+        .set({
+            margin: 10,
+            filename: 'Editor PDF.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: {
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait',
+            },
+        })
+        .from(content)
+        .save();
+}
