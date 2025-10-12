@@ -1,3 +1,5 @@
+window.emitter = window.emitter || { emit() {}, on() {}, off() {} };
+
 var isLocal =
     typeof isLocal !== 'undefined'
         ? isLocal
@@ -213,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editorPdfDownloadBtn) {
         editorPdfDownloadBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            // saveAsPDF();
             editorPdfDownload();
         });
     }
@@ -1870,7 +1871,7 @@ async function summarizeOCR() {
     });
 }
 
-// 🎤 오디오 파일에서 텍스트 추출
+// 오디오 파일에서 텍스트 추출
 async function getSpeechText(file) {
     if (!file) {
         const fileInput = document.getElementById('audioFile');
@@ -2212,7 +2213,62 @@ async function blobToWav(blob) {
     return new Blob([wavBuffer], { type: 'audio/wav' });
 }
 
+function initQuillOnce() {
+    if (window.quill) return window.quill;
+
+    // (필요시) 포맷/사이즈 화이트리스트 등록
+    const Font = Quill.import('formats/font');
+    Font.whitelist = [
+        'malgun',
+        'batang',
+        'gungsuh',
+        'gulim',
+        'noto-sans-kr',
+        'sans-serif',
+        'serif',
+        'monospace',
+    ];
+    const SizeStyle = Quill.import('attributors/style/size');
+    SizeStyle.whitelist = [
+        '13.3px',
+        '14.7px',
+        '16px',
+        '18.7px',
+        '21.3px',
+        '24px',
+        '32px',
+    ];
+    Quill.register(SizeStyle, true);
+    Quill.register(Font, true);
+
+    // 실제 에디터 생성 (단 한 번)
+    const q = new Quill('#quill', {
+        modules: { toolbar: '#quill-toolbar' },
+        theme: 'snow',
+        placeholder: '여기에 문서를 작성하세요…',
+    });
+    window.quill = q;
+
+    // 초기 포맷(선택)
+    q.setSelection(0, 0, 'silent');
+    q.format('font', 'malgun', 'silent');
+    const fontSel = document.querySelector('.ql-font');
+    if (fontSel) fontSel.value = 'malgun';
+
+    return q;
+}
+
 let quill2 = null; // 에디터 텍스트 추출 에디터, 전역(또는 함수 바깥)에 선언
+
+function ensureQuill2() {
+    if (quill2) return quill2;
+    quill2 = new Quill('#quill2', {
+        theme: 'snow',
+        modules: { toolbar: false },
+    });
+    return quill2;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const $editspinner = document.getElementById('edit_spinner');
 
@@ -2261,12 +2317,389 @@ document.addEventListener('DOMContentLoaded', () => {
         injectSizePresetBeforeInit();
     }
 
+    Quill.register(
+        'modules/blotFormatter',
+        QuillBlotFormatter.default || QuillBlotFormatter
+    );
+
     const quill = new Quill('#quill', {
-        modules: { toolbar: '#quill-toolbar' },
         theme: 'snow',
         placeholder: '여기에 문서를 작성하세요…',
+        modules: {
+            toolbar: '#quill-toolbar',
+
+            blotFormatter: {},
+        },
     });
+
+    let SC_lastImg = null;
+    quill.root.addEventListener('mousedown', (e) => {
+        const t = e.target;
+        if (t && t.tagName === 'IMG') {
+            SC_lastImg = t;
+        }
+    });
+
+    function SC_imgInfo(img) {
+        if (!img) return null;
+        const blot = Quill.find(img);
+        if (!blot) return null;
+        const index = quill.getIndex(blot);
+        return { blot, index, src: img.getAttribute('src') };
+    }
+    function SC_reselectAt(index) {
+        quill.setSelection(index, 1, 'silent');
+        const [leaf] = quill.getLeaf(index);
+        const node = leaf && leaf.domNode;
+        if (node && node.tagName === 'IMG') {
+            node.dispatchEvent(new MouseEvent('click', { bubbles: true })); // BlotFormatter 오버레이 갱신
+        }
+    }
+
+    // === A) 위/아래 한 블록씩 이동 ===
+    function moveImage(delta) {
+        const info = SC_imgInfo(SC_lastImg);
+        if (!info) return;
+
+        // 기존 포맷/폭 기억
+        const oldFmt = quill.getFormat(info.index, 1);
+        const width =
+            SC_lastImg.style.width || SC_lastImg.getAttribute('width') || null;
+
+        // 삭제
+        quill.deleteText(info.index, 1, 'user');
+
+        // 목표 인덱스: 현재 블록 경계 기준으로 위/아래
+        let target = info.index + delta; // 대략적 이동
+        // 안전장치: 문서 범위 내로 클램프
+        target = Math.max(0, Math.min(target, quill.getLength() - 1));
+
+        // 삽입
+        quill.insertEmbed(target, 'image', info.src, 'user');
+
+        // 복원 + 재선택
+        requestAnimationFrame(() => {
+            if (width) {
+                const [leaf] = quill.getLeaf(target);
+                const node = leaf && leaf.domNode;
+                if (node) node.style.width = width;
+            }
+            if (oldFmt.align)
+                quill.formatLine(target, 1, { align: oldFmt.align }, 'silent');
+            SC_reselectAt(target);
+        });
+    }
+
+    // === B) 정렬(왼/중/오) ===
+    function alignImage(where) {
+        const info = SC_imgInfo(SC_lastImg);
+        if (!info) return;
+        quill.formatLine(info.index, 1, { align: where || false }, 'user');
+        requestAnimationFrame(() => SC_reselectAt(info.index));
+    }
+
+    // === C) 크기 프리셋 (25/50/75/100%) ===
+    function sizeImage(pct) {
+        const img = SC_lastImg;
+        if (!img) return;
+        img.style.width = pct + '%';
+        requestAnimationFrame(() => {
+            const info = SC_imgInfo(img);
+            if (info) SC_reselectAt(info.index);
+        });
+    }
+
+    // === D) 단축키: Alt+↑/↓ 이동, Alt+1/2/3 정렬, Alt+9/0 크기 ===
+    quill.root.addEventListener('keydown', (e) => {
+        if (!SC_lastImg) return;
+        if (!e.altKey) return;
+
+        switch (e.key) {
+            case 'ArrowUp':
+                e.preventDefault();
+                moveImage(-1);
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                moveImage(+1);
+                break;
+            case '1': // 왼쪽 정렬
+                e.preventDefault();
+                alignImage(false);
+                break;
+            case '2': // 가운데
+                e.preventDefault();
+                alignImage('center');
+                break;
+            case '3': // 오른쪽
+                e.preventDefault();
+                alignImage('right');
+                break;
+            case '9': // 50%
+                e.preventDefault();
+                sizeImage(50);
+                break;
+            case '0': // 100%
+                e.preventDefault();
+                sizeImage(100);
+                break;
+        }
+    });
+
+    // --- 2) 오버레이 재계산 유틸 (정렬 후 호출) ---
+    function SC_refreshOverlay() {
+        if (!SC_lastImg) return;
+
+        const blot = Quill.find(SC_lastImg);
+        if (!blot) return;
+
+        const bf = quill.getModule('blotFormatter');
+
+        // 레이아웃이 정렬로 바뀐 뒤에 실행되도록 두 프레임 대기
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                // 선택을 이미지에 정확히 맞춘 뒤 클릭을 합성해서 BF가 재계산하게 함
+                const index = quill.getIndex(blot);
+                quill.setSelection(index, 1, 'silent');
+                SC_lastImg.dispatchEvent(
+                    new MouseEvent('click', { bubbles: true })
+                );
+
+                // 내부 오버레이 API가 노출되어 있으면 한 번 더 강제 재배치
+                try {
+                    if (
+                        bf &&
+                        bf.overlay &&
+                        typeof bf.overlay.reposition === 'function'
+                    ) {
+                        bf.overlay.reposition();
+                    }
+                } catch (e) {}
+            });
+        });
+    }
+
+    // --- 3) 툴바 align 핸들러 오버라이드 (정렬 직후 오버레이 재계산) ---
+    (function patchAlignHandler(quill) {
+        const toolbar = quill.getModule('toolbar');
+        if (!toolbar) return;
+
+        const orig =
+            toolbar.handlers.align ||
+            function (value) {
+                quill.format('align', value);
+            };
+
+        toolbar.addHandler('align', function (value) {
+            // 1) 기존 정렬 동작 수행
+            try {
+                orig.call(toolbar, value);
+            } catch (_) {
+                quill.format('align', value);
+            }
+            // 2) 정렬 렌더가 반영된 뒤 오버레이 재계산
+            SC_refreshOverlay();
+        });
+    })(quill);
+
+    // --- 4) 혹시 툴바가 select(change) 이벤트만 쏘는 경우를 대비한 백업 바인딩 ---
+    const qlAlign = document.querySelector('.ql-toolbar .ql-align');
+    if (qlAlign) {
+        qlAlign.addEventListener('change', () => SC_refreshOverlay());
+    }
+
+    // --- 5) 편집기 변화 전반을 감지하는 백업(가벼운 옵저버) ---
+    // 정렬로 부모 block의 style/class가 바뀌는 타이밍을 잡아 재계산
+    const editorEl = quill.root;
+    const observer = new MutationObserver((mutations) => {
+        // 이미지가 선택된 상태에서 block 정렬 class/style이 바뀌면 재계산
+        if (SC_lastImg) {
+            const changed = mutations.some((m) => m.type === 'attributes');
+            if (changed) SC_refreshOverlay();
+        }
+    });
+    observer.observe(editorEl, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['class', 'style'],
+    });
+
     window.quill = quill;
+
+    (function bootstrapImageResizer() {
+        const RETRY_MS = 120;
+        let tries = 0;
+
+        function init() {
+            const q = window.quill; // ❗ 새로 만들지 말고 이미 생성된 것만 참조
+            const ed = q?.root || document.querySelector('#quill .ql-editor');
+            const ct =
+                q?.container ||
+                document.querySelector('#quill').closest('.ql-container');
+
+            if (!q || !ed || !ct) {
+                if (tries++ < 80) return setTimeout(init, RETRY_MS);
+                console.warn('[qimg] quill not ready, skip');
+                return;
+            }
+
+            if (document.getElementById('qimgResizer')) {
+                console.debug('[qimg] already initialized');
+                return;
+            }
+
+            // ✅ 오버레이는 컨테이너에 붙이기 (편집내용 영역 X)
+            const box = document.createElement('div');
+            box.id = 'qimgResizer';
+            box.className = 'qimg-resizer hidden';
+
+            ['nw', 'ne', 'sw', 'se'].forEach((pos) => {
+                const h = document.createElement('div');
+                h.className = 'qimg-handle ' + pos;
+                box.appendChild(h);
+            });
+
+            if (getComputedStyle(ct).position === 'static')
+                ct.style.position = 'relative';
+            ct.appendChild(box);
+
+            let activeImg = null;
+
+            const reposition = () => {
+                if (!activeImg) return;
+                const cr = ct.getBoundingClientRect();
+                const ir = activeImg.getBoundingClientRect();
+                const left = ir.left - cr.left + ed.scrollLeft;
+                const top = ir.top - cr.top + ed.scrollTop;
+                box.style.width = ir.width + 'px';
+                box.style.height = ir.height + 'px';
+                box.style.transform = `translate(${left}px, ${top}px)`;
+            };
+
+            const show = (img) => {
+                activeImg = img;
+                box.classList.remove('hidden');
+                reposition();
+            };
+            const hide = () => {
+                activeImg = null;
+                box.classList.add('hidden');
+            };
+
+            ed.addEventListener('click', (e) => {
+                const img =
+                    e.target && e.target.tagName === 'IMG' ? e.target : null;
+                if (img) show(img);
+                else hide();
+            });
+
+            ed.addEventListener(
+                'scroll',
+                () => requestAnimationFrame(reposition),
+                { passive: true }
+            );
+            window.addEventListener(
+                'resize',
+                () => requestAnimationFrame(reposition),
+                { passive: true }
+            );
+            ed.addEventListener('input', () =>
+                requestAnimationFrame(reposition)
+            );
+            q.on &&
+                q.on('text-change', () => requestAnimationFrame(reposition));
+            q.on &&
+                q.on('selection-change', () =>
+                    requestAnimationFrame(reposition)
+                );
+
+            const bindLoad = (img) =>
+                img.addEventListener(
+                    'load',
+                    () => requestAnimationFrame(reposition),
+                    { once: true }
+                );
+            ed.querySelectorAll('img').forEach(bindLoad);
+            new MutationObserver((muts) => {
+                muts.forEach((m) => {
+                    m.addedNodes &&
+                        m.addedNodes.forEach((n) => {
+                            if (n.tagName === 'IMG') bindLoad(n);
+                            else if (n.querySelectorAll)
+                                n.querySelectorAll('img').forEach(bindLoad);
+                        });
+                });
+            }).observe(ed, { childList: true, subtree: true });
+
+            // 드래그 리사이즈
+            function startResize(e) {
+                if (!activeImg) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const handle = e.currentTarget;
+                const dir =
+                    ['nw', 'ne', 'sw', 'se'].find((d) =>
+                        handle.classList.contains(d)
+                    ) || 'se';
+                const pt = (ev) => (ev.touches ? ev.touches[0] : ev);
+                const startX = pt(e).clientX;
+                const startW = activeImg.getBoundingClientRect().width;
+
+                const editorMaxW = ed.clientWidth - 16;
+                const hardMax = Math.max(editorMaxW, 1200);
+                const minW = 60;
+
+                const prevSel = document.body.style.userSelect;
+                document.body.style.userSelect = 'none';
+
+                function onMove(ev) {
+                    const cx = pt(ev).clientX;
+                    let dx = cx - startX;
+                    if (dir === 'nw' || dir === 'sw') dx = -dx;
+                    let newW = Math.round(startW + dx);
+                    newW = Math.max(minW, Math.min(newW, hardMax));
+                    activeImg.style.width = newW + 'px';
+                    activeImg.style.height = 'auto';
+                    requestAnimationFrame(reposition);
+                }
+                function onUp() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onUp);
+                    document.body.style.userSelect = prevSel;
+                    requestAnimationFrame(reposition);
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+                document.addEventListener('touchmove', onMove, {
+                    passive: false,
+                });
+                document.addEventListener('touchend', onUp);
+            }
+
+            ['nw', 'ne', 'sw', 'se'].forEach((pos) => {
+                const h = box.querySelector('.qimg-handle.' + pos);
+                h.addEventListener('mousedown', startResize);
+                h.addEventListener('touchstart', startResize, {
+                    passive: false,
+                });
+            });
+
+            // 이미지가 지워지면 숨김
+            ed.addEventListener('input', () => {
+                if (activeImg && !ed.contains(activeImg)) hide();
+            });
+
+            console.info('[qimg] initialized');
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
 
     const toolbarMod = quill.getModule('toolbar');
 
@@ -2504,8 +2937,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 메뉴 클릭 직전에 커서 위치 저장 (선택한 위치에 삽입하기 위함)
     let __insertRange = null;
     document.addEventListener('mousedown', (e) => {
-        if (e.target.closest('#imgMenu-ocr') && window.quill) {
-            __insertRange = quill.getSelection(true);
+        if (e.target.closest('#imgMenu-ocr, #imgMenu-insert') && window.quill) {
+            __insertRange = quill.getSelection() ||
+                window.__lastQuillRange || {
+                    index: quill.getLength(),
+                    length: 0,
+                };
         }
     });
 
@@ -2529,11 +2966,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const q = window.quill;
             // const text = (txtArea?.value || '').toString();
             const text = (quill2.getText() || '').toString();
-            const range = __insertRange ||
-                q.getSelection(true) || {
-                    index: q.getLength(),
-                    length: 0,
-                };
+            const cur = q.getSelection() || { index: q.getLength(), length: 0 };
+            const range = __insertRange || cur;
+
             q.insertText(range.index, text, 'user');
             q.setSelection(range.index + text.length, 0, 'silent');
             __insertRange = null;
@@ -2541,10 +2976,49 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ③ 텍스트 추출
-        // if (e.target.closest('#imgMenu-ocr')) {
-        //
-        // }
+        if (e.target.closest('#imgMenu-insert')) {
+            e.preventDefault();
+            if (!window.quill) return;
+
+            // 메뉴 닫기(선택)
+            document
+                .getElementById('imgMenu')
+                ?.setAttribute('aria-hidden', 'true');
+
+            const picker = ensureImagePicker(); // (②에서 만든 함수)
+            picker.onchange = async () => {
+                const file = picker.files && picker.files[0];
+                picker.value = ''; // 다음 사용 대비 초기화
+                if (!file) return;
+
+                try {
+                    spin?.(true); // 스피너 유틸 재사용
+                    const dataURL = await fileToDataURLCompressed(file, {
+                        // (③에서 만든 함수)
+                        maxW: 1600,
+                        maxH: 1600,
+                        quality: 0.9,
+                    });
+
+                    const q = window.quill;
+                    const range = __insertRange ||
+                        q.getSelection(true) || {
+                            index: q.getLength(),
+                            length: 0,
+                        };
+                    q.insertEmbed(range.index, 'image', dataURL, 'user');
+                    q.setSelection(range.index + 1, 0, 'silent');
+                } catch (err) {
+                    alert('이미지 삽입 실패: ' + (err?.message || err));
+                } finally {
+                    __insertRange = null;
+                    spin?.(false);
+                }
+            };
+
+            picker.click(); // 파일 선택창 열기
+            return;
+        }
     });
 
     // 전역 또는 초기화 코드 — 페이지 로딩 시 한 번만 실행
@@ -2570,8 +3044,13 @@ document.addEventListener('DOMContentLoaded', () => {
         spin(true);
 
         try {
-            const isPDF = /\.pdf$/i.test(file.name);
-            const EP = isPDF ? OCR.pdf : OCR.image;
+            const name = (file.name || '').toLowerCase();
+            const isImage = /\.(png|jpe?g|gif|bmp|webp|tiff?)$/i.test(name);
+            const isDocLike =
+                /\.(pdf|docx?|hwp|hwpx|xls|xlsx|ppt|pptx|txt)$/i.test(name);
+
+            // 이미지면 /visionOCR, 그 외 문서형이면 /fileScan
+            const EP = isImage ? OCR.image : isDocLike ? OCR.pdf : OCR.image;
             const url = joinUrl(OCR.base, EP.url);
 
             let out = '';
@@ -2608,7 +3087,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const methodProblem = status === 405 || status === 404;
 
                 if (
-                    !isPDF &&
+                    isImage &&
                     (methodProblem || !navigator.onLine || status === 0) &&
                     window.Tesseract
                 ) {
@@ -3556,9 +4035,8 @@ async function imagePromptChange() {
             body: `
     <div class="hn">
       <!-- 높임말 스타일 -->
-      <label class="sc-label">종결어미</label>
       <div class="sc-row">
-       <label class="sc-label"종결어미</label>
+       <label class="sc-label">종결어미</label>
         <div class="hn-style-line">
           <div class="sc-select sc-select--native">
             <select id="hnLevel">
@@ -3718,24 +4196,32 @@ async function imagePromptChange() {
             title: '확장',
             body: `
     <div class="ex">
-      <!-- 길이 & 문장개수 -->
-      <div class="sc-row ex-controls">
-        <div class="ex-control">
-  <label class="sc-label">길이 증가율</label>
-  <div class="sc-select sc-select--native">
-    <select id="exLenLevel">
-      <option value="low">가볍게</option>
-      <option value="medium" selected>보통</option>
-      <option value="high">많이</option>
-      <option value="xhigh">아주 많이</option>
-    </select>
-  </div>
-</div>
-
-        <div class="ex-control">
-          <label class="sc-label">추가 문장 수</label>
-          <input id="exSentences" class="sc-number" type="number" min="0" max="10" step="1" value="0" />
+      <!-- 모드 선택 -->
+      <div class="sc-row">
+        <label class="sc-label">모드</label>
+        <div class="sc-tr__scope" id="exModeWrap">
+          <label class="sc-radio"><input type="radio" name="exMode" value="length" checked> 길이 늘리기</label>
+          <label class="sc-radio"><input type="radio" name="exMode" value="sentences"> 문장 추가</label>
         </div>
+      </div>
+
+      <!-- 길이 증가율 (레벨) -->
+      <div class="sc-row ex-ctrl ex-ctrl--length">
+        <label class="sc-label">길이 증가율</label>
+        <div class="sc-select sc-select--native">
+          <select id="exLenLevel">
+            <option value="low">가볍게</option>
+            <option value="medium" selected>보통</option>
+            <option value="high">많이</option>
+            <!-- <option value="xhigh">아주 많이</option> -->
+          </select>
+        </div>
+      </div>
+
+      <!-- 문장 추가 -->
+      <div class="sc-row ex-ctrl ex-ctrl--sentences" hidden>
+        <label class="sc-label">추가 문장 수</label>
+        <input id="exSentences" type="number" min="1" max="50" value="1" class="sc-input-number" style="width:110px;">
       </div>
 
       <!-- 대상 범위 -->
@@ -3751,7 +4237,7 @@ async function imagePromptChange() {
       <!-- 직접 입력 -->
       <div class="sc-row" id="exCustomWrap" hidden>
         <label class="sc-label">입력 텍스트</label>
-        <textarea id="exCustomInput" rows="6" class="textarea_SC" placeholder="확장할 텍스트를 입력하세요..."></textarea>
+        <textarea id="exCustomInput" rows="5" class="textarea_SC" placeholder="확장할 문장을 입력하세요..."></textarea>
       </div>
 
       <!-- 결과 -->
@@ -5638,9 +6124,12 @@ async function imagePromptChange() {
                 const wrapCustom = $('#exCustomWrap');
                 const inputCustom = $('#exCustomInput');
 
-                const lenLevelSel = $('#exLenLevel');
-                const nSent = $('#exSentences');
+                // 모드 & 옵션
+                const modeWrap = $('#exModeWrap');
+                const lenLevelSel = $('#exLenLevel'); // 'low' | 'medium' | 'high' | (xhigh)
+                const nSent = $('#exSentences'); // 숫자 (1~50)
 
+                // 길이 레벨 → % 매핑 (백엔드 호환)
                 const LEN_PRESET = {
                     low: 20,
                     medium: 50,
@@ -5648,7 +6137,9 @@ async function imagePromptChange() {
                     xhigh: 100,
                 };
 
-                let last = null;
+                let last = null; // { out, scope, rangeSnap, first }
+
+                // 선택 길이 메타
 
                 function updateSelectionMeta() {
                     try {
@@ -5670,6 +6161,7 @@ async function imagePromptChange() {
                     window.quill.on('text-change', updateSelectionMeta);
                 }
 
+                // 범위 라디오
                 function currentScope() {
                     const r = document.querySelector(
                         '#scDrawer input[name="exScope"]:checked'
@@ -5688,9 +6180,32 @@ async function imagePromptChange() {
                     });
                 syncCustomWrap();
 
+                // 모드 라디오
+                function currentMode() {
+                    const r = document.querySelector(
+                        '#scDrawer input[name="exMode"]:checked'
+                    );
+                    return r ? r.value : 'length';
+                }
+                function syncExCtrls() {
+                    const mode = currentMode();
+                    const lenCtrls =
+                        drawer.querySelectorAll('.ex-ctrl--length');
+                    const sentCtrls = drawer.querySelectorAll(
+                        '.ex-ctrl--sentences'
+                    );
+                    lenCtrls.forEach((el) => (el.hidden = mode !== 'length'));
+                    sentCtrls.forEach(
+                        (el) => (el.hidden = mode !== 'sentences')
+                    );
+                }
+                modeWrap?.addEventListener('change', syncExCtrls);
+                syncExCtrls();
+
                 // 실행
                 btnRun?.addEventListener('click', async () => {
                     const scope = currentScope();
+                    const mode = currentMode();
                     const q = window.quill;
 
                     let text = '';
@@ -5716,7 +6231,7 @@ async function imagePromptChange() {
                             return;
                         }
                         text = q.getText(sel.index, sel.length);
-                        range = sel;
+                        range = sel; // 첫 1회 적용에만 쓰는 스냅샷
                     } else {
                         text = (inputCustom?.value || '').trim();
                         if (!text) {
@@ -5726,23 +6241,27 @@ async function imagePromptChange() {
                         }
                     }
 
-                    const levelKey = lenLevelSel?.value || 'medium';
-                    const length_boost = LEN_PRESET[levelKey] ?? 50;
-                    const add_sentences = Math.max(
-                        0,
-                        Math.min(50, parseInt(nSent?.value || '0', 10))
-                    );
+                    // 페이로드: 선택된 모드의 필드만 전송(배타적)
+                    const payload = { content: text, mode };
+
+                    if (mode === 'length') {
+                        const levelKey = lenLevelSel?.value || 'medium';
+                        payload.length_level = levelKey;
+                    } else {
+                        // sentences 모드
+                        const addN = Math.max(
+                            1,
+                            Math.min(50, parseInt(nSent?.value || '1', 10))
+                        );
+                        payload.add_sentences = addN;
+                        // 길이 증가는 아예 보내지 않음
+                    }
 
                     btnApply.disabled = btnCopy.disabled = true;
                     $('#exResult').textContent = '확장 중…';
 
                     try {
-                        const r = await postJSON(`${BASE_URL}/expand`, {
-                            content: text,
-                            length_boost,
-                            length_level: levelKey,
-                            add_sentences,
-                        });
+                        const r = await postJSON(`${BASE_URL}/expand`, payload);
                         const out = (r?.result || r?.text || '')
                             .toString()
                             .trim();
@@ -5756,6 +6275,7 @@ async function imagePromptChange() {
                             out && out.length
                         );
 
+                        // 직접 입력이면 결과로 스크롤
                         if (scope === 'input') {
                             document
                                 .getElementById('exResult')
@@ -5765,6 +6285,7 @@ async function imagePromptChange() {
                                 });
                         }
 
+                        // 첫 1회만 range 스냅샷 사용, 이후엔 현재 드래그/커서 기준
                         last = {
                             out,
                             scope,
@@ -5777,6 +6298,7 @@ async function imagePromptChange() {
                     }
                 });
 
+                // 적용: 첫 클릭만 스냅샷 → 이후 현재 드래그/커서 기준
                 btnApply?.addEventListener('click', () => {
                     if (!last?.out) return;
                     const q = window.quill;
@@ -6502,6 +7024,73 @@ translateSubmenu.addEventListener('click', async (e) => {
         translateSubmenu.hidden = true;
     }
 });
+
+//이미지 삽입 관련
+function ensureImagePicker() {
+    let inp = document.getElementById('__imgInsertPicker');
+    if (!inp) {
+        inp = document.createElement('input');
+        inp.type = 'file';
+        inp.id = '__imgInsertPicker';
+        inp.accept = 'image/*';
+
+        Object.assign(inp.style, {
+            position: 'fixed',
+            left: '-10000px',
+            top: '-10000px',
+            width: '1px',
+            height: '1px',
+            opacity: '0',
+            pointerEvents: 'auto',
+        });
+        document.body.appendChild(inp);
+    }
+    return inp;
+}
+
+async function fileToDataURLCompressed(file, opt = {}) {
+    const { maxW = 1600, maxH = 1600, quality = 0.9 } = opt;
+
+    // GIF(애니메이션 보존): 그대로 DataURL
+    if (/^image\/gif$/i.test(file.type)) {
+        return new Promise((res, rej) => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.onerror = rej;
+            fr.readAsDataURL(file);
+        });
+    }
+
+    const srcURL = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = rej;
+        fr.readAsDataURL(file);
+    });
+
+    const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = rej;
+        i.src = srcURL;
+    });
+
+    // 캔버스 리사이즈
+    let { width: w, height: h } = img;
+    const ratio = Math.min(maxW / w, maxH / h, 1);
+    const dw = Math.round(w * ratio);
+    const dh = Math.round(h * ratio);
+
+    const cvs = document.createElement('canvas');
+    cvs.width = dw;
+    cvs.height = dh;
+    const ctx = cvs.getContext('2d');
+    ctx.drawImage(img, 0, 0, dw, dh);
+
+    // PNG는 투명도 보존, 그 외는 JPEG로 경량화
+    const isPng = /^image\/png$/i.test(file.type);
+    return cvs.toDataURL(isPng ? 'image/png' : 'image/jpeg', quality);
+}
 
 async function editorPdfDownload() {
     if (!window.quill) return alert('에디터가 아직 준비되지 않았어요.');

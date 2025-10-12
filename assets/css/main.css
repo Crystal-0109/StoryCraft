@@ -4794,3 +4794,133 @@ page-editor #resultArea:empty {
         font-size: 16px;
     }
 }
+
+/* === 이미지 삽입 후 사이즈 조정 === */
+#quill .ql-editor {
+    position: relative;
+    overflow: visible;
+}
+#quill .ql-editor img {
+    max-width: 100%;
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.qimg-resizer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border: 1.5px dashed #60a5fa;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 999;
+}
+
+.qimg-resizer.hidden {
+    display: none;
+}
+
+.qimg-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #3b82f6;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    pointer-events: auto;
+}
+.qimg-handle.nw {
+    left: -6px;
+    top: -6px;
+    cursor: nwse-resize;
+}
+.qimg-handle.ne {
+    right: -6px;
+    top: -6px;
+    cursor: nesw-resize;
+}
+.qimg-handle.sw {
+    left: -6px;
+    bottom: -6px;
+    cursor: nesw-resize;
+}
+.qimg-handle.se {
+    right: -6px;
+    bottom: -6px;
+    cursor: nwse-resize;
+}
+
+/* 추가 */
+.page-editor #quill .ql-editor {
+    position: relative;
+    overflow: visible;
+}
+
+/* 이미지 기본 */
+.page-editor #quill .ql-editor img {
+    max-width: 100%;
+    height: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+/* 오버레이 박스 */
+.qimg-resizer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border: 1.5px dashed #60a5fa;
+    border-radius: 4px;
+    z-index: 999;
+    pointer-events: none;
+}
+.qimg-resizer.hidden {
+    display: none;
+}
+
+/* 네 귀퉁이 핸들 */
+.qimg-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #3b82f6;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    pointer-events: auto; /* 핸들은 클릭/드래그 가능 */
+}
+.qimg-handle.nw {
+    left: -8px;
+    top: -8px;
+    cursor: nwse-resize;
+}
+.qimg-handle.ne {
+    right: -8px;
+    top: -8px;
+    cursor: nesw-resize;
+}
+.qimg-handle.sw {
+    left: -8px;
+    bottom: -8px;
+    cursor: nesw-resize;
+}
+.qimg-handle.se {
+    right: -8px;
+    bottom: -8px;
+    cursor: nwse-resize;
+}
+
+.ql-editor img {
+    cursor: move; /* 마우스 커서 이동 모양 */
+    max-width: 100%;
+    height: auto;
+}
+
+.qimg-resizer,
+.qimg-handle,
+.qimg-handle::before,
+.qimg-handle::after {
+    display: none !important;
+}

@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
     <head>
+        <script>
+            window.emitter = window.emitter || { emit() {}, on() {}, off() {} };
+        </script>
         <meta charset="utf-8" />
         <title>StoryCraft Editor</title>
         <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -190,7 +193,7 @@
                             </span>
                         </div>
                     </div>
-                    <div id="quill" class="editor"></div>
+                    <div id="quill"></div>
                 </div>
 
                 <textarea id="userInput" style="display: none"></textarea>
@@ -259,7 +262,20 @@
             <input
                 type="file"
                 id="ocrFileInput"
-                accept="image/*,.pdf"
+                accept="
+    image/*,
+    .pdf,.doc,.docx,.hwp,.hwpx,.xls,.xlsx,.ppt,.pptx,.txt,
+    application/pdf,
+    application/msword,
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document,
+    application/haansoft-hwp,
+    application/vnd.hancom.hwpx+zip,
+    application/vnd.ms-excel,
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
+    application/vnd.ms-powerpoint,
+    application/vnd.openxmlformats-officedocument.presentationml.presentation,
+    text/plain
+  "
                 style="display: none"
             />
         </div>
@@ -558,6 +574,19 @@
 
         <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+
+        <script src="https://cdn.jsdelivr.net/npm/quill-blot-formatter@1.0.5/dist/quill-blot-formatter.min.js"></script>
+
+        <script>
+            // 플러그인 등록
+            if (window.QuillBlotFormatter) {
+                Quill.register(
+                    'modules/blotFormatter',
+                    window.QuillBlotFormatter.default ||
+                        window.QuillBlotFormatter
+                );
+            }
+        </script>
 
         <!-- Preloader -->
         <div id="preloader"></div>
