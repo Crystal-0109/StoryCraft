@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-import io
 import os
 import re
 import json
@@ -15,7 +14,6 @@ from fastapi import Request
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from google.cloud import vision
-import base64
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PyPDF2 import PdfReader
@@ -24,12 +22,9 @@ from google.oauth2 import service_account
 from google.cloud import translate_v2 as google_translate
 from google.cloud import vision
 import html
-import torch
-from transformers import T5ForConditionalGeneration, T5Tokenizer
 import time
 import pathlib
 import subprocess
-import mimetypes
 import zipfile
 import xml.etree.ElementTree as ET
 import speech_recognition as sr  # 음성인식
