@@ -8,7 +8,7 @@ var BASE_URL =
         ? BASE_URL
         : isLocal
         ? 'http://127.0.0.1:8000'
-        : 'https://storycraft-cnjn.onrender.com' || 'https://storycraft-ppxj.onrender.com';
+        : 'https://storycraft-cnjn.onrender.com';
         // : 'https://storycraft-ppxj.onrender.com';
 
 // DOMContentLoaded 이벤트를 사용하여 DOM이 완전히 로드된 이후에 document.getElementById로 요소를 찾도록 수정
