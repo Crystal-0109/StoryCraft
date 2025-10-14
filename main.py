@@ -165,7 +165,6 @@ ALLOW_ORIGINS = [
     "http://localhost:8000",
     "https://hj-sp.github.io",
     "https://crystal-0109.github.io",
-    "https://storycraft-cnjn.onrender.com",
 ]
 
 app.add_middleware(
