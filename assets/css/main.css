@@ -2491,6 +2491,7 @@ section,
     border: 1px solid var(--editor-border);
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    margin-right: 40px;
 }
 .page-editor .editor-card {
     width: auto;
@@ -2671,6 +2672,7 @@ section,
     border-radius: 0 !important;
 }
 .page-editor .card.editor-card {
+    margin-right: 40px;
     border: 1px solid var(--editor-border, #e5e7eb) !important;
     border-radius: 12px !important;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
