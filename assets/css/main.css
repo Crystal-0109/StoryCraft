@@ -1,3 +1,87 @@
+/* 버튼 두 개를 자연스럽게 나란히 배치 */
+#startRecord,
+#stopRecord {
+    display: inline-block;
+    margin: 15px 10px;
+}
+
+/* 공통 버튼 스타일 */
+.record-btn {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 녹음 시작 버튼 */
+.record-btn.start {
+    background: linear-gradient(135deg, #2196f3, #42a5f5); /* 메인 파랑 */
+    color: white;
+  }
+  .record-btn.start:hover {
+    background: linear-gradient(135deg, #1e88e5, #64b5f6); /* hover 시 밝게 */
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+  }
+  .record-btn.start:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+/* 녹음 종료 버튼 */
+.record-btn.stop {
+    background: linear-gradient(135deg, #e53935, #ef5350);
+    color: white;
+}
+.record-btn.stop:hover {
+    background: linear-gradient(135deg, #d32f2f, #f44336);
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(239, 83, 80, 0.4);
+}
+.record-btn.stop:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 🔊 텍스트 영역 */
+#speecharea {
+    width: 90%;
+    max-width: 600px;
+    height: 150px;
+    display: block;
+    margin: 20px auto;
+    padding: 14px;
+    font-size: 15px;
+    border-radius: 12px;
+    border: 2px solid #ccc;
+    resize: none;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+#speecharea:focus {
+    border-color: #4caf50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+
+/* 🔴 녹음 중일 때 깜빡이는 효과 (선택 사항) */
+.recording-active {
+    animation: pulse 1s infinite;
+}
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 12px rgba(255, 0, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+    }
+}
 .custom-context-menu {
     position: absolute;
     background: #fff;

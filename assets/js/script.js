@@ -11,7 +11,7 @@ var BASE_URL =
         : isLocal
         ? 'http://127.0.0.1:8000'
         : 'https://storycraft-cnjn.onrender.com';
-        // : 'https://storycraft-ppxj.onrender.com';
+// : 'https://storycraft-ppxj.onrender.com';
 
 // DOMContentLoaded 이벤트를 사용하여 DOM이 완전히 로드된 이후에 document.getElementById로 요소를 찾도록 수정
 document.addEventListener('DOMContentLoaded', () => {
@@ -594,7 +594,6 @@ async function summarizeText() {
 
         if (data.result) {
             const heading = document.createElement('h5');
-            heading.innerText = '📚 요약 결과:';
 
             const content = document.createElement('p');
             content.id = 'summaryContent';
@@ -2138,6 +2137,20 @@ async function startRecording() {
             // 🔹 녹음된 파일을 전역 변수에 저장
             lastRecordedFile = wavFile;
             console.log('녹음된 파일 준비 완료:', wavFile);
+
+            // 녹음된 파일에서 텍스트 추출 및 speechArea에 삽입
+            try {
+                const text = await getSpeechText(lastRecordedFile);
+                const speechArea = document.getElementById('speechArea');
+                if (speechArea) {
+                    // speechArea.value = text; // textarea면 value 사용
+                    speechArea.innerText = text; // div라면 이 줄 사용
+                }
+                console.log('음성 인식 결과:', text);
+            } catch (err) {
+                console.error('음성 인식 실패:', err);
+                alert('음성 인식 중 오류가 발생했습니다.');
+            }
         };
 
         mediaRecorder.start();
@@ -2149,8 +2162,8 @@ async function startRecording() {
     }
 }
 
-// 🛑 녹음 종료
-function stopRecording() {
+// 녹음 종료
+async function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         console.log('녹음 종료');
