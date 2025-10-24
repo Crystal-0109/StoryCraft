@@ -13,6 +13,147 @@ var BASE_URL =
         : 'https://storycraft-cnjn.onrender.com';
 // : 'https://storycraft-ppxj.onrender.com';
 
+/* === [INLINE SPINNER UTILS | put this just after BASE_URL, before DOMContentLoaded] === */
+
+const RESULT_IDS = {
+    prompt: 'scChatList', // 대화창 메시지 리스트(필요 시)
+    summary: 'smResult',
+    expand: 'exResult',
+    rewrite: 'rwResult',
+    grammar: 'grResult',
+    translate: 'trResult',
+    style: 'stResult',
+    honorific: 'hnResult',
+    informal: 'ifmResult',
+};
+
+async function runWithPanelSpinner(label, taskFn, areaEl) {
+    const area =
+        areaEl ||
+        getActiveResultBox?.() ||
+        document.getElementById('resultArea');
+    if (!area) return taskFn();
+    createInlineSpinner(area, label);
+    try {
+        return await taskFn();
+    } finally {
+        removeInlineSpinner(area);
+    }
+}
+
+// 현재 열린 패널의 결과 컨테이너를 찾아 반환
+function getActiveResultBox() {
+    const body = document.getElementById('scDrawerBody');
+    if (!body) return null;
+
+    // OPEN_KEY는 아래 openPanel에서 갱신됨
+    const key =
+        (typeof OPEN_KEY !== 'undefined' && OPEN_KEY) ||
+        document.getElementById('scDrawer')?.dataset.key ||
+        'summary';
+
+    const id = RESULT_IDS[key];
+    let el = id ? body.querySelector('#' + id) : null;
+
+    // (폴백) 기능별 결과 박스가 없으면 공용 앵커를 보장
+    if (!el) {
+        el = body.querySelector('#resultArea');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'resultArea';
+            body.appendChild(el);
+        }
+    }
+    return el;
+}
+
+function ensureResultContainer() {
+    // 패널 본문
+    const body = document.getElementById('scDrawerBody');
+    if (!body) return null;
+
+    // 이미 있으면 재사용
+    let box = body.querySelector('#resultArea');
+    if (box) return box;
+
+    // 없으면 생성 + 붙이기
+    box = document.createElement('div');
+    box.id = 'resultArea';
+    // 필요하면 기본 패딩/여백
+    // box.style.padding = '8px 0';
+    body.appendChild(box);
+    return box;
+}
+
+function createInlineSpinner(container, label = '처리 중…') {
+    if (!container) return null;
+    let box = container.querySelector('[data-role="inline-spinner"]');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'sc-inline-loading';
+        box.setAttribute('data-role', 'inline-spinner');
+
+        const spin = document.createElement('span');
+        spin.className = 'spinner'; // main.css의 기존 스피너 클래스 재사용
+
+        const text = document.createElement('span');
+        text.className = 'sc-inline-loading__label';
+        text.textContent = label;
+
+        box.appendChild(spin);
+        box.appendChild(text);
+        container.appendChild(box);
+    } else {
+        const text = box.querySelector('.sc-inline-loading__label');
+        if (text) text.textContent = label;
+        box.style.display = 'inline-flex';
+    }
+    return box;
+}
+
+function removeInlineSpinner(container) {
+    if (!container) return;
+    const box = container.querySelector('[data-role="inline-spinner"]');
+    if (box) box.remove();
+}
+
+async function runWithPanelSpinner(label, taskFn) {
+    const area =
+        typeof getActiveResultBox === 'function'
+            ? getActiveResultBox()
+            : document.getElementById('resultArea');
+    if (!area) {
+        // 패널이 아직 안 열렸다면 그냥 실행
+        return taskFn();
+    }
+    createInlineSpinner(area, label);
+    try {
+        return await taskFn();
+    } finally {
+        removeInlineSpinner(area);
+    }
+}
+
+function getPanelTipText(key) {
+    const map = {
+        prompt: 'AI 프롬프트 입력 패널이에요.\n텍스트를 입력하면 선택 영역 또는 문서 전체에 적용됩니다.',
+        summary:
+            '문서를 간결하게 요약해줍니다.\n문단 또는 불릿 형식으로 출력됩니다.',
+        expand: '짧은 글을 더 풍부하게 확장합니다.\n문단이나 문장을 자연스럽게 늘려줍니다.',
+        rewrite: '문맥을 유지하면서 문장을 더 매끄럽게 다시 써줍니다.',
+        grammar:
+            '맞춤법과 문법을 교정합니다.\n띄어쓰기와 조사 오류도 함께 수정돼요.',
+        style: '글의 문체(공손체, 간결체 등)를 바꿉니다.',
+        honorific: '문장을 높임말(합니다/해요체)로 바꿔줍니다.',
+        informal: '문장을 반말체(해라/한다체)로 바꿔줍니다.',
+        translate: '선택한 언어로 번역해줍니다.',
+        speech: '음성으로 입력할 수 있습니다. 녹음/정지/삽입 버튼입니다.',
+    };
+    return map[key] || '이 기능에 대한 설명이 없습니다.';
+}
+
+/* === [/INLINE SPINNER UTILS] === */
+
 // DOMContentLoaded 이벤트를 사용하여 DOM이 완전히 로드된 이후에 document.getElementById로 요소를 찾도록 수정
 document.addEventListener('DOMContentLoaded', () => {
     // 버튼 클릭 이벤트 바인딩
@@ -164,14 +305,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnsummary) {
         btnsummary.addEventListener('click', (e) => {
             e.preventDefault();
-            doSummary();
+            runWithPanelSpinner('요약 생성 중…', () => doSummary());
         });
     }
     const btnexpand = document.getElementById('btn-expand');
     if (btnexpand) {
         btnexpand.addEventListener('click', (e) => {
             e.preventDefault();
-            doExpand();
+            runWithPanelSpinner('확장 생성 중…', () => doExpand());
         });
     }
     const btnstyle = document.getElementById('btn-style');
@@ -206,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btngrammar) {
         btngrammar.addEventListener('click', (e) => {
             e.preventDefault();
-            doGrammar();
+            runWithPanelSpinner('문법 분석 중…', () => doGrammar());
         });
     }
     const editorPdfDownloadBtn = document.getElementById(
@@ -552,54 +693,46 @@ async function applyStyle() {
 }
 
 async function summarizeText() {
-    const userInput = document.getElementById('userInput').value;
-    const resultArea = document.getElementById('resultArea');
-    const spinner = document.getElementById('loadingSpinner');
+    const userInput = document.getElementById('userInput').value.trim();
+    const resultArea = getActiveResultBox();
+    if (!resultArea) return;
 
-    const rewriteBox = document.getElementById('rewriteResults');
-    if (rewriteBox) rewriteBox.innerHTML = '';
+    createInlineSpinner(resultArea, '요약 생성 중…');
 
-    const oldSummary = document.getElementById('summaryContent');
-    if (oldSummary) oldSummary.remove();
+    // resultArea 범위 안만 정리
+    resultArea.querySelector('#rewriteResults')?.replaceChildren();
+    resultArea.querySelector('#summaryContent')?.remove();
+    resultArea.querySelector('#expandContent')?.remove();
+    Array.from(resultArea.querySelectorAll('h5'))
+        .filter((h) => /요약 결과|확장 결과/.test(h.innerText))
+        .forEach((h) => h.remove());
 
-    const oldExpand = document.getElementById('expandContent');
-    if (oldExpand) oldExpand.remove();
-
-    const oldSummaryHeading = Array.from(document.querySelectorAll('h5')).find(
-        (el) => el.innerText.includes('요약 결과')
-    );
-    if (oldSummaryHeading) oldSummaryHeading.remove();
-
-    const oldExpandHeading = Array.from(document.querySelectorAll('h5')).find(
-        (el) => el.innerText.includes('확장 결과')
-    );
-    if (oldExpandHeading) oldExpandHeading.remove();
-
-    if (spinner) spinner.style.display = 'block';
-
-    if (!userInput.trim()) {
+    if (!userInput) {
+        removeInlineSpinner(resultArea);
         alert('입력된 문장이 없습니다.');
-        if (spinner) spinner.style.display = 'none';
         return;
     }
 
     try {
-        const response = await fetch(`${BASE_URL}/summary`, {
+        const res = await fetch(`${BASE_URL}/summary`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: userInput }),
         });
+        const data = await res.json();
 
-        const data = await response.json();
+        removeInlineSpinner(resultArea);
 
-        if (data.result) {
+        const text = (data?.result || '').trim();
+        if (text) {
             const heading = document.createElement('h5');
-
+            heading.innerText = '📚 요약 결과:';
             const content = document.createElement('p');
             content.id = 'summaryContent';
             content.style.whiteSpace = 'pre-wrap';
-            content.innerText = data.result;
+            content.textContent = text;
 
+            // PDF 버튼 리바인딩 유지
             const pdfBtn = document.getElementById('pdfDownloadBtn');
             if (pdfBtn) {
                 const newBtn = pdfBtn.cloneNode(true);
@@ -613,15 +746,16 @@ async function summarizeText() {
             resultArea.appendChild(heading);
             resultArea.appendChild(content);
         } else {
-            resultArea.innerText = `⚠️ 요약 실패: ${
-                data.error || '알 수 없는 오류'
-            }`;
+            const p = document.createElement('p');
+            p.textContent = `⚠️ 요약 실패: ${data?.error || '알 수 없는 오류'}`;
+            resultArea.appendChild(p);
         }
-    } catch (error) {
-        console.error('요약 요청 중 오류:', error);
-        resultArea.innerText = '❗요약 요청 중 오류가 발생했습니다.';
-    } finally {
-        if (spinner) spinner.style.display = 'none';
+    } catch (e) {
+        removeInlineSpinner(resultArea);
+        const p = document.createElement('p');
+        p.textContent = '❗요약 요청 중 오류가 발생했습니다.';
+        resultArea.appendChild(p);
+        console.error(e);
     }
 }
 
@@ -2163,7 +2297,7 @@ async function startRecording() {
 }
 
 // 녹음 종료
-async function stopRecording() {
+function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         console.log('녹음 종료');
@@ -2280,6 +2414,20 @@ function ensureQuill2() {
         modules: { toolbar: false },
     });
     return quill2;
+}
+
+function showEditSpinner(label = '처리 중…') {
+    const el = document.getElementById('edit_spinner');
+    if (!el) return;
+    const labelEl = el.querySelector('.edit_spinner__label');
+    if (labelEl) labelEl.textContent = label;
+    el.setAttribute('aria-hidden', 'false');
+}
+
+function hideEditSpinner() {
+    const el = document.getElementById('edit_spinner');
+    if (!el) return;
+    el.setAttribute('aria-hidden', 'true');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -4347,11 +4495,21 @@ async function imagePromptChange() {
             (typeof getTitleFor === 'function' && getTitleFor(key)) ||
             tpl.title ||
             'AI Panel';
-        if (titleEl) titleEl.textContent = nextTitle;
+        if (titleEl) {
+            titleEl.textContent = nextTitle;
+            titleEl.insertAdjacentHTML(
+                'beforeend',
+                `<span class="sc-info" data-tip="${getPanelTipText(
+                    key
+                )}">i</span>`
+            );
+        }
 
         // 4) 본문/푸터
         if (bodyEl) bodyEl.innerHTML = tpl.body || '';
         if (footEl) footEl.innerHTML = tpl.foot || '';
+
+        getActiveResultBox();
 
         // 5) 열기
         drawer?.classList.add('open');
@@ -4359,7 +4517,11 @@ async function imagePromptChange() {
         WRAP?.classList.add('with-panel');
 
         OPEN_KEY = key;
-        if (drawer) drawer.dataset.key = key;
+        if (drawer) {
+            drawer.dataset.key = key;
+            drawer.setAttribute('data-panel', key);
+        }
+
         if (typeof updateDockActive === 'function') updateDockActive(key);
         if (typeof bindHandlers === 'function') bindHandlers(key);
 
@@ -4394,9 +4556,9 @@ async function imagePromptChange() {
                 'transform',
                 'position',
                 'top',
-            ].forEach((p) => {
-                drawer.style.removeProperty(p);
-            });
+            ].forEach((p) => drawer.style.removeProperty(p));
+
+            drawer.removeAttribute('data-panel');
         }
 
         if (bodyEl) bodyEl.innerHTML = '';
@@ -4444,6 +4606,8 @@ async function imagePromptChange() {
         return false;
     }
     function bindHandlers(key) {
+        const drawerEl = document.getElementById('scDrawer');
+        drawerEl?.setAttribute('data-panel', key);
         switch (key) {
             case 'prompt': {
                 const $ = (sel) =>
@@ -5007,6 +5171,15 @@ async function imagePromptChange() {
                     const tgt = tgtSel?.value || 'ko';
                     const q = window.quill;
 
+                    const area = $('#trResult');
+                    if (area) {
+                        createInlineSpinner(area, '번역 중…');
+                        console.debug(
+                            '[spinner] insert ->',
+                            area.querySelector('[data-role="inline-spinner"]')
+                        );
+                    }
+
                     let text = '';
                     let range = null;
 
@@ -5015,18 +5188,21 @@ async function imagePromptChange() {
                             ? q.getText(0, Math.max(0, q.getLength() - 1))
                             : '';
                         if (!text.trim()) {
-                            $('#trResult').textContent = '문서가 비어 있어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '문서가 비어 있어요.';
                             return;
                         }
                     } else if (scope === 'sel') {
                         if (!q) {
-                            $('#trResult').textContent = '에디터가 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '에디터가 없어요.';
                             return;
                         }
                         const sel = q.getSelection();
                         if (!sel || sel.length === 0) {
-                            $('#trResult').textContent =
-                                '선택된 내용이 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent = '선택된 내용이 없어요.';
                             return;
                         }
                         text = q.getText(sel.index, sel.length);
@@ -5034,8 +5210,10 @@ async function imagePromptChange() {
                     } else {
                         text = (inputCustom?.value || '').trim();
                         if (!text) {
-                            $('#trResult').textContent =
-                                '번역할 텍스트를 입력해 주세요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent =
+                                    '번역할 텍스트를 입력해 주세요.';
                             return;
                         }
                     }
@@ -5057,7 +5235,8 @@ async function imagePromptChange() {
                         out = await mockTranslate(text, src, tgt);
                     }
 
-                    $('#trResult').textContent = out;
+                    if (area) removeInlineSpinner(area);
+                    if (area) area.textContent = out;
                     btnApply.disabled = btnCopy.disabled = !(out && out.length);
                     last = {
                         out,
@@ -5195,6 +5374,8 @@ async function imagePromptChange() {
                     const scope = currentScope();
                     const q = window.quill;
                     const style = styleSel?.value || 'formal';
+                    const area = $('#stResult');
+                    if (area) createInlineSpinner(area, '변환 중…');
 
                     let text = '';
                     let range = null;
@@ -5204,18 +5385,21 @@ async function imagePromptChange() {
                             ? q.getText(0, Math.max(0, q.getLength() - 1))
                             : '';
                         if (!text.trim()) {
-                            $('#stResult').textContent = '문서가 비어 있어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '문서가 비어 있어요.';
                             return;
                         }
                     } else if (scope === 'sel') {
                         if (!q) {
-                            $('#stResult').textContent = '에디터가 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '에디터가 없어요.';
                             return;
                         }
                         const sel = q.getSelection();
                         if (!sel || sel.length === 0) {
-                            $('#stResult').textContent =
-                                '선택된 내용이 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent = '선택된 내용이 없어요.';
                             return;
                         }
                         text = q.getText(sel.index, sel.length);
@@ -5223,8 +5407,10 @@ async function imagePromptChange() {
                     } else {
                         text = (inputCustom?.value || '').trim();
                         if (!text) {
-                            $('#stResult').textContent =
-                                '변환할 텍스트를 입력해 주세요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent =
+                                    '변환할 텍스트를 입력해 주세요.';
                             return;
                         }
                     }
@@ -5245,7 +5431,8 @@ async function imagePromptChange() {
                         out = `【${style}】\n\n${text}`;
                     }
 
-                    $('#stResult').textContent = out;
+                    if (area) removeInlineSpinner(area);
+                    if (area) area.textContent = out;
                     btnApply.disabled = btnCopy.disabled = !(out && out.length);
                     last = {
                         out,
@@ -5386,6 +5573,8 @@ async function imagePromptChange() {
                     const scope = currentScope();
                     const q = window.quill;
                     const level = levelSel?.value || 'haeyo';
+                    const area = $('#hnResult');
+                    if (area) createInlineSpinner(area, '변환 중…');
 
                     let text = '';
                     let range = null;
@@ -5440,7 +5629,8 @@ async function imagePromptChange() {
                         out = `【높임말 변환: ${tag}】\n\n${text}`;
                     }
 
-                    $('#hnResult').textContent = out;
+                    if (area) removeInlineSpinner(area);
+                    if (area) area.textContent = out;
                     btnApply.disabled = btnCopy.disabled = !(out && out.length);
                     $('#hnResult')?.scrollIntoView({
                         block: 'start',
@@ -5581,6 +5771,8 @@ async function imagePromptChange() {
                 btnRun?.addEventListener('click', async () => {
                     const scope = currentScope();
                     const q = window.quill;
+                    const area = $('#ifmResult');
+                    if (area) createInlineSpinner(area, '변환 중…');
 
                     let text = '';
                     let range = null;
@@ -5590,17 +5782,22 @@ async function imagePromptChange() {
                             ? q.getText(0, Math.max(0, q.getLength() - 1))
                             : '';
                         if (!text.trim()) {
-                            $('#ifmResult').textContent = '문서가 비어 있어.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent = '문서가 비어 있습니다.';
                             return;
                         }
                     } else if (scope === 'sel') {
                         if (!q) {
-                            $('#ifmResult').textContent = '에디터가 없어.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '에디터가 없습니다.';
                             return;
                         }
                         const sel = q.getSelection();
                         if (!sel || sel.length === 0) {
-                            $('#ifmResult').textContent = '선택한 내용이 없어.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent = '선택한 내용이 없습니다.';
                             return;
                         }
                         text = q.getText(sel.index, sel.length);
@@ -5608,8 +5805,10 @@ async function imagePromptChange() {
                     } else {
                         text = (inputCustom?.value || '').trim();
                         if (!text) {
-                            $('#ifmResult').textContent =
-                                '변환할 텍스트를 입력해 줘.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent =
+                                    '변환할 텍스트를 입력해 주세요.';
                             return;
                         }
                     }
@@ -5628,7 +5827,8 @@ async function imagePromptChange() {
                         out = `【반말 변환: 하다】\n\n${text}`;
                     }
 
-                    $('#ifmResult').textContent = out;
+                    if (area) removeInlineSpinner(area);
+                    if (area) area.textContent = out;
                     btnApply.disabled = btnCopy.disabled = !(out && out.length);
                     $('#ifmResult')?.scrollIntoView({
                         block: 'start',
@@ -5769,6 +5969,8 @@ async function imagePromptChange() {
                 btnRun?.addEventListener('click', async () => {
                     const scope = currentScope();
                     const q = window.quill;
+                    const area = $('#rwResult');
+                    if (area) createInlineSpinner(area, '재작성 중…');
 
                     let text = '';
                     let range = null;
@@ -5822,7 +6024,8 @@ async function imagePromptChange() {
                         out = `[재작성 예시]\n\n${text}`;
                     }
 
-                    $('#rwResult').textContent = out;
+                    if (area) removeInlineSpinner(area);
+                    if (area) area.textContent = out;
                     btnApply.disabled = btnCopy.disabled = !(out && out.length);
 
                     $('#rwResult')?.scrollIntoView({
@@ -5996,6 +6199,8 @@ async function imagePromptChange() {
                     const scope = currentScope();
                     const q = window.quill;
                     const format = fmtSel?.value || 'paragraph';
+                    const area = $('#smResult');
+                    if (area) createInlineSpinner(area, '요약 생성 중…');
                     let text = '';
                     let range = null;
 
@@ -6004,18 +6209,21 @@ async function imagePromptChange() {
                             ? q.getText(0, Math.max(0, q.getLength() - 1))
                             : '';
                         if (!text.trim()) {
-                            $('#smResult').textContent = '문서가 비어 있어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '문서가 비어 있어요.';
                             return;
                         }
                     } else if (scope === 'sel') {
                         if (!q) {
-                            $('#smResult').textContent = '에디터가 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '에디터가 없어요.';
                             return;
                         }
                         const sel = q.getSelection();
                         if (!sel || sel.length === 0) {
-                            $('#smResult').textContent =
-                                '선택된 내용이 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent = '선택된 내용이 없어요.';
                             return;
                         }
                         text = q.getText(sel.index, sel.length);
@@ -6023,8 +6231,10 @@ async function imagePromptChange() {
                     } else {
                         text = (inputCustom?.value || '').trim();
                         if (!text) {
-                            $('#smResult').textContent =
-                                '요약할 텍스트를 입력해 주세요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent =
+                                    '요약할 텍스트를 입력해 주세요.';
                             return;
                         }
                     }
@@ -6048,7 +6258,8 @@ async function imagePromptChange() {
                         out = toBullets(out);
                     }
 
-                    $('#smResult').textContent = out;
+                    if (area) removeInlineSpinner(area);
+                    if (area) area.textContent = out;
                     btnApply.disabled = btnCopy.disabled = !(out && out.length);
 
                     $('#smResult')?.scrollIntoView({
@@ -6220,6 +6431,8 @@ async function imagePromptChange() {
                     const scope = currentScope();
                     const mode = currentMode();
                     const q = window.quill;
+                    const area = $('#exResult');
+                    if (area) createInlineSpinner(area, '확장 중…');
 
                     let text = '';
                     let range = null;
@@ -6229,18 +6442,22 @@ async function imagePromptChange() {
                             ? q.getText(0, Math.max(0, q.getLength() - 1))
                             : '';
                         if (!text.trim()) {
-                            $('#exResult').textContent = '문서가 비어 있어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '문서가 비어 있어요.';
                             return;
                         }
                     } else if (scope === 'sel') {
                         if (!q) {
-                            $('#exResult').textContent = '에디터가 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '에디터가 없어요.';
                             return;
                         }
                         const sel = q.getSelection();
                         if (!sel || sel.length === 0) {
-                            $('#exResult').textContent =
-                                '선택된 내용이 없어요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent = '선택된 내용이 없어요.';
                             return;
                         }
                         text = q.getText(sel.index, sel.length);
@@ -6248,8 +6465,10 @@ async function imagePromptChange() {
                     } else {
                         text = (inputCustom?.value || '').trim();
                         if (!text) {
-                            $('#exResult').textContent =
-                                '확장할 텍스트를 입력해 주세요.';
+                            if (area) removeInlineSpinner(area);
+                            if (area)
+                                area.textContent =
+                                    '확장할 텍스트를 입력해 주세요.';
                             return;
                         }
                     }
@@ -6271,7 +6490,6 @@ async function imagePromptChange() {
                     }
 
                     btnApply.disabled = btnCopy.disabled = true;
-                    $('#exResult').textContent = '확장 중…';
 
                     try {
                         const r = await postJSON(`${BASE_URL}/expand`, payload);
@@ -6279,11 +6497,13 @@ async function imagePromptChange() {
                             .toString()
                             .trim();
                         if (!out) {
-                            $('#exResult').textContent = '빈 결과입니다.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '빈 결과입니다.';
                             return;
                         }
 
-                        $('#exResult').textContent = out;
+                        if (area) removeInlineSpinner(area);
+                        if (area) area.textContent = out;
                         btnApply.disabled = btnCopy.disabled = !(
                             out && out.length
                         );
@@ -6306,8 +6526,10 @@ async function imagePromptChange() {
                             first: true,
                         };
                     } catch (e) {
-                        $('#exResult').textContent =
-                            '확장 실패: ' + (e?.message || e);
+                        if (area) removeInlineSpinner(area);
+                        if (area)
+                            area.textContent =
+                                '확장 실패: ' + (e?.message || e);
                     }
                 });
 
@@ -6448,6 +6670,8 @@ async function imagePromptChange() {
                 btnRun?.addEventListener('click', async () => {
                     const scope = currentScope();
                     const q = window.quill;
+                    const area = $('#grResult');
+                    if (area) createInlineSpinner(area, '교정 중…');
 
                     let text = '';
                     let range = null;
@@ -6480,14 +6704,15 @@ async function imagePromptChange() {
 
                     const len = (text || '').length;
                     if (len >= 300) {
-                        $('#grResult').textContent =
-                            '⚠️ 300자 미만으로 선택하거나 직접 입력해 주세요.';
+                        if (area) removeInlineSpinner(area);
+                        if (area)
+                            area.textContent =
+                                '⚠️ 300자 미만으로 선택하거나 직접 입력해 주세요.';
                         return;
                     }
 
                     // 호출
                     btnApply.disabled = btnCopy.disabled = true;
-                    $('#grResult').textContent = '교정 중…';
                     try {
                         const r = await postJSON(`${BASE_URL}/editorGrammar`, {
                             content: text,
@@ -6496,11 +6721,13 @@ async function imagePromptChange() {
                             .toString()
                             .trim();
                         if (!out) {
-                            $('#grResult').textContent = '빈 결과입니다.';
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = '빈 결과입니다.';
                             return;
                         }
 
-                        $('#grResult').textContent = out;
+                        if (area) removeInlineSpinner(area);
+                        if (area) area.textContent = out;
                         btnApply.disabled = btnCopy.disabled = !(
                             out && out.length
                         );
@@ -6521,8 +6748,10 @@ async function imagePromptChange() {
                             first: true,
                         };
                     } catch (e) {
-                        $('#grResult').textContent =
-                            '문법 교정 실패: ' + (e?.message || e);
+                        if (area) removeInlineSpinner(area);
+                        if (area)
+                            area.textContent =
+                                '문법 교정 실패: ' + (e?.message || e);
                     }
                 });
 
@@ -7123,3 +7352,37 @@ async function editorPdfDownload() {
         .from(content)
         .save();
 }
+
+const info = document.getElementById('speechInfo');
+let tooltip;
+
+info.addEventListener('mouseenter', (e) => {
+    const text = info.getAttribute('data-tip');
+    if (!text) return;
+
+    tooltip = document.createElement('div');
+    tooltip.className = 'tooltip-floating';
+    tooltip.textContent = text;
+    document.body.appendChild(tooltip);
+
+    // 아이콘 위치 계산
+    const rect = info.getBoundingClientRect();
+    const top = rect.bottom + 8; // 아래쪽 8px 띄움
+    const left = rect.left + rect.width / 2;
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+
+    requestAnimationFrame(() => {
+        tooltip.style.opacity = '1';
+        tooltip.style.transform = 'translate(-50%, 4px)';
+    });
+});
+
+info.addEventListener('mouseleave', () => {
+    if (tooltip) {
+        tooltip.style.opacity = '0';
+        tooltip.remove();
+        tooltip = null;
+    }
+});

@@ -140,30 +140,6 @@
                                     <i class="bi bi-image"></i>
                                 </button>
                             </span>
-                            <!-- <span class="ql-formats edit-upload">
-                                <input
-                                    id="ocrFile"
-                                    type="file"
-                                    accept="image/*,application/pdf"
-                                    hidden
-                                />
-                                <label
-                                    for="ocrFile"
-                                    class="edit-upload__btn"
-                                    title="파일 업로드"
-                                    aria-label="파일 업로드"
-                                >
-                                    <i class="bi bi-folder-fill"></i
-                                    ><span class="edit-upload__text"
-                                        >파일 업로드</span
-                                    >
-                                </label>
-                                <span
-                                    id="ocrFileName"
-                                    class="edit-upload__name"
-                                    hidden
-                                ></span>
-                            </span> -->
                             <span class="ql-formats">
                                 <button id="editorPdfDownloadBtn">💾</button>
                             </span>
@@ -189,11 +165,18 @@
                                     >
                                         ⤵️
                                     </button>
+                                    <span
+                                        class="sc-info tooltip-js"
+                                        id="speechInfo"
+                                        data-tip="음성으로 입력할 수 있습니다.
+                                    녹음/정지/삽입 버튼입니다."
+                                        >i</span
+                                    >
                                 </form>
                             </span>
                         </div>
                     </div>
-                    <div id="quill" style="margin-right: 40px"></div>
+                    <div id="quill"></div>
                 </div>
 
                 <textarea id="userInput" style="display: none"></textarea>
