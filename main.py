@@ -34,6 +34,32 @@ import imageio_ffmpeg
 from hanspell import spell_checker
 from typing import Optional
 
+try:
+    import kss
+    HAS_KSS = True
+except Exception:
+    HAS_KSS = False
+
+_KO_TERMINALS = ("다.", "요.", "입니다.", "인가요?", "일까요?",
+                 "습니까?", "했다.", "했다고", "했다며")
+
+def split_ko_sentences(text: str):
+    text = (text or "").strip()
+    if not text:
+        return []
+    if HAS_KSS:
+        # kss는 줄바꿈 포함해도 잘 쪼개줌
+        return [s.strip() for s in kss.split_sentences(text) if s.strip()]
+    # fallback: 아주 단순한 규칙
+    #  - 줄바꿈을 공백으로 바꾸고
+    #  - 문장말(다./요./입니다./?! 등) 기준 대략 분리
+    t = re.sub(r"[ \t]*\n[ \t]*", " ", text)
+    parts = re.split(r"(?<=[\.!?]|다\.|요\.|입니다\.)\s+", t)
+    return [p.strip() for p in parts if p.strip()]
+
+def count_ko_sentences(text: str) -> int:
+    return len(split_ko_sentences(text))
+
 def _expand_clamp(v, lo, hi):
     try:
         v = int(v)
@@ -389,26 +415,31 @@ async def expand(payload: ExpandInput):
         if not text:
             raise HTTPException(status_code=400, detail="content is empty")
 
+        # 1) 길이 증가 퍼센트 확정
         level_map = {'low': 20, 'medium': 50, 'high': 80, 'xhigh': 100}
-        if payload.length_level:
+        if getattr(payload, "length_level", None):
             boost_in = level_map.get(payload.length_level.lower(), 50)
         else:
-            boost_in = int(payload.length_boost or 20)
+            boost_in = int(getattr(payload, "length_boost", 20) or 20)
 
         allowed = [20, 50, 70, 80, 100]
+        # 허용값에 스냅 → 미세값도 근접 허용으로 매핑
         boost = boost_in if boost_in in allowed else min(
-            allowed, key=lambda x: abs(x - boost_in))
+            allowed, key=lambda x: abs(x - boost_in)
+        )
 
+        # 2) 입력 길이/문장수 측정 (kss)
         orig_chars = len(text)
-        orig_sents = _expand_count_sents(text)
+        orig_sents = count_ko_sentences(text)
         short_input = (orig_chars < 120) or (orig_sents <= 2)
 
+        # 3) 목표/최소/최대 글자수 설정
         target_chars = int(orig_chars * (1 + boost / 100.0))
         min_chars = int(orig_chars * (1 + (boost / 100.0) * 0.95))
         max_chars = int(orig_chars * (1 + boost / 100.0 + 0.08))
 
         if short_input:
-
+            # 짧은 입력은 바닥/상한을 올려 자연스러운 분량 확보
             floor_min = orig_chars + (120 if boost >= 70 else 80)
             floor_target = floor_min + 60
             floor_max = floor_target + 160
@@ -416,22 +447,27 @@ async def expand(payload: ExpandInput):
             target_chars = max(target_chars, floor_target)
             max_chars = max(max_chars, floor_max)
 
-        add_n = _expand_clamp(payload.add_sentences or 0, 0, 50)
+        # 4) 문장 추가 옵션
+        add_n = max(0, min(int(getattr(payload, "add_sentences", 0) or 0), 50))
 
+        # 짧은 입력 + add_n 미지정 시 기본 1~2문장 보강
         if short_input and add_n == 0:
             add_n = 2 if boost >= 70 else 1
 
         if add_n > 0:
+            # 문장 추가 시 예상 글자수(문장당 70자 기준)로 예산 상향
             extra_chars = add_n * 70
             min_chars = max(min_chars, int(orig_chars + extra_chars * 0.8))
             target_chars = max(target_chars, min_chars + 60)
             max_chars = max(max_chars, int(orig_chars + extra_chars * 1.4))
 
+        # 불변성 보장
         if min_chars > max_chars:
             max_chars = min_chars + 120
         if target_chars > max_chars:
             target_chars = max(min_chars, max_chars - 60)
 
+        # 5) 1차 생성
         system_msg = "당신은 한국어 글을 자연스럽고 명확하게 확장하는 전문가입니다."
         guide = [
             "원문 의미를 유지하고 전개를 매끄럽게 확장하라.",
@@ -442,6 +478,8 @@ async def expand(payload: ExpandInput):
             "모든 문장은 완결형(…다./…요./…입니다.)으로 끝내라.",
         ]
         if add_n > 0:
+            per_sent_buf = 130  # 문장 하나당 안전 버퍼
+            max_chars += add_n * per_sent_buf
             guide.append(f"원문 내용은 유지하되, **최소 {add_n}문장**을 새로 추가하라.")
 
         user_prompt = f"[원문]\n{text}\n\n[지시]\n- " + "\n- ".join(guide)
@@ -457,6 +495,7 @@ async def expand(payload: ExpandInput):
         if len(out) > max_chars:
             out = _expand_smart_trim_to_chars(out, max_chars)
 
+        # 6) 끝맺음 보정
         if not _expand_ends_with_terminal(out) or finish == "length":
             remain = max(0, max_chars - len(out))
             if remain > 24:
@@ -482,6 +521,7 @@ async def expand(payload: ExpandInput):
             if len(out) > max_chars:
                 out = _expand_smart_trim_to_chars(out, max_chars)
 
+        # 7) 최소 글자수 미달 시 보강
         tries = 0
         while len(out) < min_chars and tries < 2:
             need_chars = max(120, min(min_chars - len(out),
@@ -519,37 +559,129 @@ async def expand(payload: ExpandInput):
                 out = _expand_crop_to_last_boundary(out)
             tries += 1
 
+        # 8) 문장 추가 정확도 루프 (kss 기반)
         if add_n > 0:
-            needed = (orig_sents + add_n) - _expand_count_sents(out)
+            per_sent_buf = 130  # 문장 하나당 안전 버퍼
+            max_chars += add_n * per_sent_buf
+            needed = (orig_sents + add_n) - count_ko_sentences(out)
             s_tries = 0
-            while needed > 0 and s_tries < 2:
+            while needed > 0 and s_tries < 4:
                 remain_budget = max_chars - len(out)
-                if remain_budget <= 60:
+                if remain_budget <= 80:
                     break
-                cont_prompt = (
-                    f"[지금까지의 초안]\n{out}\n\n"
-                    f"위 글의 맥락을 유지하며 **새로운 문장 {needed}개**만 추가로 작성하라.\n"
-                    "- 기존 문장은 수정하지 말고 '이어 쓰기'\n"
-                    "- 각 문장은 완결형(…다./…요./…입니다.)으로 끝내기\n"
-                    "- 도입/결론/요약 금지, 중복 금지\n"
-                    "- 출력은 '추가되는 문장만' 반환"
-                )
+
+                per_sent_budget = 120
+                ask_budget = min(remain_budget, needed * per_sent_budget + 40)
+
+                cont_prompt = f"""
+[지금까지의 초안]
+{out}
+
+[지시]
+- 기존 문장은 수정하지 말고 '이어 쓰기'만 하세요.
+- **정확히 {needed}개 문장**을 추가하세요.
+- 번호/불릿/따옴표/머리말 없이, 각 문장은 **한 줄에 한 문장**만 출력하려 노력하세요.
+- 모든 문장은 완결형(…다./…요./…입니다.)으로 끝내세요.
+- 도입/결론/요약/중복 금지, 앞 맥락만 자연스럽게 보강하세요.
+- 출력은 **추가되는 문장만** 반환하세요.
+""".strip()
+
                 add_text, _ = _expand_llm(
                     client,
-                    [{"role": "system", "content": "확장 보강(문장만) 도우미"},
-                     {"role": "user", "content": cont_prompt}],
-                    max_chars=min(remain_budget, 420 + needed * 100),
-                    temperature=0.35
+                    [
+                        {"role": "system", "content": "문장 추가 전용 보조"},
+                        {"role": "user", "content": cont_prompt}
+                    ],
+                    max_chars=ask_budget,
+                    temperature=0.3
                 )
                 add_text = (add_text or "").strip()
-                if add_text:
-                    sep = "\n\n" if not out.endswith("\n") else "\n"
-                    out = (out + sep + add_text).strip()
-                    if len(out) > max_chars:
-                        out = _expand_smart_trim_to_chars(out, max_chars)
-                needed -= _expand_count_sents(add_text)
+                if not add_text:
+                    s_tries += 1
+                    continue
+
+                # (1) kss로 문장 단위 분리
+                cand_sents = split_ko_sentences(add_text)
+
+                # (2) 불릿/번호 제거 + 종결 보정
+                cleaned = []
+                for s in cand_sents:
+                    s = re.sub(r'^[\s\-\*\•\·]+', '', s)      # 불릿류 제거
+                    s = re.sub(r'^\s*\d+[\.\)]\s*', '', s)     # 번호 제거
+                    s = s.strip()
+                    if not s:
+                        continue
+                    if not s.endswith(("다.", "요.", "입니다.", "?", "!", "…", ".")):
+                        s = s.rstrip(" ,;:") + "다."
+                    cleaned.append(s)
+
+                if not cleaned:
+                    s_tries += 1
+                    continue
+
+                # (3) 필요한 개수만 선별
+                to_take = cleaned[:needed]
+
+                # (4) 예산 초과 시 뒤에서 문장 단위로 줄이기
+                room = remain_budget - (0 if out.endswith("\n") else 1)
+                while to_take and len("\n".join(to_take)) > room:
+                    to_take.pop()
+
+                if not to_take:
+                    s_tries += 1
+                    continue
+
+                # (5) 본문에 붙이기
+                sep = "\n" if out.endswith("\n") else "\n\n"
+                out = (out + sep + "\n".join(to_take)).strip()
+
+                if len(out) > max_chars:
+                    out = _expand_smart_trim_to_chars(out, max_chars)
+
+                # (6) 남은 필요 문장 재계산
+                needed = (orig_sents + add_n) - count_ko_sentences(out)
                 s_tries += 1
 
+            # (옵션) 마지막 미달 문장 보정 1회
+            final_needed = (orig_sents + add_n) - count_ko_sentences(out)
+            remain_budget = max_chars - len(out)
+            if final_needed > 0 and remain_budget > 60:
+                per_sent_budget = 90
+                ask_budget = min(
+                    remain_budget, final_needed * per_sent_budget + 20)
+                cont_prompt = f"""
+[지금까지의 초안]
+{out}
+
+[지시]
+- 기존 문장 수정 금지, 이어쓰기만.
+- **정확히 {final_needed}개 문장** 추가.
+- 번호/불릿 없이 자연스러운 완결형 문장.
+- 출력은 추가 문장만.
+""".strip()
+                add_text, _ = _expand_llm(
+                    client,
+                    [
+                        {"role": "system", "content": "문장 추가(마감) 보조"},
+                        {"role": "user", "content": cont_prompt}
+                    ],
+                    max_chars=ask_budget,
+                    temperature=0.25
+                )
+                lines = split_ko_sentences(add_text or "")
+                take = lines[:final_needed]
+
+                room = remain_budget - (0 if out.endswith("\n") else 1)
+                while take and (len("\n".join(take)) > room):
+                    take.pop()
+
+                if take:
+                    sep = "\n" if out.endswith("\n") else "\n\n"
+                    out = (out + sep + "\n".join(take)).strip()
+                    if len(out) > max_chars:
+                        out = _expand_smart_trim_to_chars(out, max_chars)
+
+        # 9) 최종 최댓값 보정
         if len(out) > max_chars:
             out = _expand_smart_trim_to_chars(out, max_chars)
 
@@ -562,7 +694,7 @@ async def expand(payload: ExpandInput):
                 "target_chars": target_chars,
                 "requested_add_sentences": add_n,
                 "final_chars": len(out),
-                "final_sents": _expand_count_sents(out),
+                "final_sents": count_ko_sentences(out),
             }
         }
 
@@ -573,7 +705,6 @@ async def expand(payload: ExpandInput):
             status_code=500,
             content={"error": f"/expand failed: {type(e).__name__}: {str(e)}"}
         )
-
 
 @app.post("/mistralGrammar")
 async def mistral_grammar(content: TextInput):
