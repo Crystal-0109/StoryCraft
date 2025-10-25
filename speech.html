@@ -83,8 +83,7 @@
                         </li>
                         <li><a href="honorific.html">Honorific</a></li>
                         <li><a href="translate.html">Translate</a></li>
-                        <li><a href="scan.html">Scan</a></li>
-                        <li><a href="image.html">Image Scan</a></li>
+                        <li><a href="image.html">Scan</a></li>
                         <li><a href="speech.html" class="active">Speech</a></li>
                         <li><a href="editor.html">Editor</a></li>
                     </ul>
@@ -97,6 +96,30 @@
             <div class="container section-title" data-aos="fade-up">
                 <div class="container">
                     <form id="uploadForm">
+                        <div class="page-button">
+                            <input
+                                type="file"
+                                id="audioFile"
+                                name="audio"
+                                accept="audio/*"
+                                class="pdfScanFileChooseBtn_SC"
+                            />
+                            <button
+                                id="startRecord"
+                                type="button"
+                                class="record-btn start"
+                            >
+                                🎙️
+                            </button>
+                            <button
+                                id="stopRecord"
+                                type="button"
+                                class="record-btn stop"
+                                disabled
+                            >
+                                🛑
+                            </button>
+                        </div>
                         <div class="page-button">
                             <select id="styleSelect">
                                 <option value="casual">구어체</option>
@@ -239,30 +262,6 @@
                         </div>
                     </form>
                     <div class="page-inputResult">
-                        <div>
-                            <input
-                                type="file"
-                                id="audioFile"
-                                name="audio"
-                                accept="audio/*"
-                                class="pdfScanFileChooseBtn_SC"
-                            />
-                            <button
-                                id="startRecord"
-                                type="button"
-                                class="record-btn start"
-                            >
-                                🎙️
-                            </button>
-                            <button
-                                id="stopRecord"
-                                type="button"
-                                class="record-btn stop"
-                                disabled
-                            >
-                                🛑
-                            </button>
-                        </div>
                         <div id="speechArea" class="resultArea_SC"></div>
                         <div class="page-arrow">
                             <span class="arrow"></span>
@@ -282,10 +281,7 @@
                                 <tbody></tbody>
                             </table>
                         </div>
-                        <div
-                            id="resultArea"
-                            class="resultArea_SC"
-                        ></div>
+                        <div id="resultArea" class="resultArea_SC"></div>
                     </div>
                     <div
                         id="loadingSpinner"
@@ -400,8 +396,7 @@
                             <li><a href="grammar.html">Grammar</a></li>
                             <li><a href="honorific.html">Honorific</a></li>
                             <li><a href="translate.html">Translate</a></li>
-                            <li><a href="scan.html">Scan</a></li>
-                            <li><a href="image.html">Image Scan</a></li>
+                            <li><a href="image.html">Scan</a></li>
                             <li><a href="speech.html">Speech</a></li>
                             <li><a href="editor.html">Editor</a></li>
                         </ul>

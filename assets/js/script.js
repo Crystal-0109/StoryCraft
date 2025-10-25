@@ -490,11 +490,30 @@ async function loadMoreExamples() {
 
             const pdfBtn = document.getElementById('pdfDownloadBtn');
             if (pdfBtn) {
-                pdfBtn.onclick = function () {
-                    const content =
-                        document.getElementById('exampleContainer').innerText;
-                    saveAsPDF(content, '예문 제공.pdf');
-                };
+                pdfBtn.addEventListener('click', () => {
+                    const container =
+                        document.getElementById('exampleContainer');
+                    if (!container) {
+                        console.error(
+                            '❌ exampleContainer 요소를 찾을 수 없습니다.'
+                        );
+                        return;
+                    }
+
+                    // 📋 이모티콘 제거 (innerText를 안전하게 처리)
+                    const content = (container.innerText || '')
+                        .replace(/📋/g, '') // 이모티콘 제거
+                        .trim();
+
+                    // saveAsPDF 함수가 존재하는지 확인
+                    if (typeof saveAsPDF === 'function') {
+                        saveAsPDF(content, '예문 제공.pdf');
+                    } else {
+                        console.error(
+                            '❌ saveAsPDF 함수가 정의되지 않았습니다.'
+                        );
+                    }
+                });
             }
         } else {
             container.innerText = '예문을 불러오지 못했습니다.';
@@ -954,7 +973,23 @@ async function mistralGrammar() {
                 const pdfBtn = document.getElementById('pdfDownloadBtn');
                 if (pdfBtn) {
                     pdfBtn.onclick = function () {
-                        saveAsPDF(resultArea, '문법 교정.pdf');
+                        if (!resultArea) return;
+
+                        // 📋 이모티콘 제거: HTML 문자열에서 제거
+                        const cloned = resultArea.cloneNode(true); // 원본 손상 방지
+                        cloned.querySelectorAll('*').forEach((el) => {
+                            if (el.childNodes.length) {
+                                el.childNodes.forEach((node) => {
+                                    if (node.nodeType === Node.TEXT_NODE) {
+                                        node.textContent =
+                                            node.textContent.replace(/📋/g, '');
+                                    }
+                                });
+                            }
+                        });
+
+                        // HTML 그대로 PDF로 저장
+                        saveAsPDF(cloned.innerHTML, '문법 교정.pdf');
                     };
                 }
             }
@@ -978,104 +1013,6 @@ async function mistralGrammar() {
         if (spinner) spinner.style.display = 'none';
     }
 }
-
-// async function mistralGrammar2() {
-//     const userInput = document.getElementById('userInput').value;
-//     const resultArea = document.getElementById('resultArea');
-//     const spinner = document.getElementById('loadingSpinner');
-//     spinner.style.display = 'block';
-
-//     const tbody = document.querySelector('tbody');
-//     if (!tbody) {
-//         console.log('⚠️ tbody 요소가 없습니다. HTML 구조를 확인하세요.');
-//         return;
-//     }
-//     while (tbody.firstChild) {
-//         tbody.removeChild(tbody.firstChild);
-//     }
-
-//     if (!userInput.trim()) {
-//         alert('입력된 문장이 없습니다.');
-//         return;
-//     }
-
-//     try {
-//         const response = await fetch('http://127.0.0.1:8000/mistralGrammar2', {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify({ content: userInput }), // 전체 글 파이썬으로 보냄
-//         });
-
-//         const data = await response.json();
-//         const array = data.result; // 텍스트가 아니라 배열 받아야 함. -> 받아지나?
-//         const len = data.arrayLen; // 툴린 문장 개수
-
-//         if (array) {
-//             const table = document.getElementById('grammarTable');
-
-//             for (let i = 0; i < len; i += 1) {
-//                 const row = document.createElement('tr');
-//                 const tdLeft = document.createElement('td');
-//                 const tdRight = document.createElement('td');
-//                 tdRight.classList.add('right');
-
-//                 tdLeft.innerHTML = `<span class="sentence">${textDiff(
-//                     array[i][0],
-//                     array[i][1]
-//                 )}</span>`;
-
-//                 // tdRight는 미스트랄 응답 결과 출력
-//                 tdRight.textContent = array[i][2];
-
-//                 row.appendChild(tdLeft);
-//                 row.appendChild(tdRight);
-//                 tbody.appendChild(row);
-
-//                 // 교정문 복사 버튼
-//                 const copyBtn = document.createElement('button');
-//                 copyBtn.innerText = '📋';
-//                 copyBtn.title = '교정문 복사';
-//                 copyBtn.style.border = 'none';
-//                 copyBtn.style.background = 'transparent';
-//                 copyBtn.style.cursor = 'pointer';
-//                 copyBtn.style.fontSize = '16px';
-//                 copyBtn.style.padding = '0';
-//                 copyBtn.style.margin = '0';
-//                 copyBtn.style.display = 'inline'; // 핵심: 인라인으로 붙이기
-
-//                 copyBtn.onclick = () => {
-//                     navigator.clipboard.writeText(array[i][1].trim());
-//                     copyBtn.innerText = '✅';
-//                     setTimeout(() => (copyBtn.innerText = '📋'), 1000);
-//                 };
-
-//                 tdLeft.appendChild(copyBtn);
-
-//                 const pdfBtn = document.getElementById('pdfDownloadBtn');
-//                 if (pdfBtn) {
-//                     pdfBtn.onclick = function () {
-//                         saveAsPDF(resultArea, '문법 교정.pdf');
-//                     };
-//                 }
-//             }
-//         } else if (data.error) {
-//             resultArea.innerText = `⚠️ 오류: ${data.error}\n\n🔍 상세 내용: ${
-//                 data.detail || '없음'
-//             }`;
-//             console.error('에러 응답 내용:', data);
-//         } else {
-//             resultArea.innerText = '⚠️ 알 수 없는 오류가 발생했습니다.';
-//             console.warn('예상치 못한 응답 구조:', data);
-//         }
-//     } catch (error) {
-//         resultArea.innerText = '❗요청 중 오류가 발생했습니다.' + error;
-//         console.error('Fetch error:', error);
-//     } finally {
-//         spinner.style.display = 'none';
-//     }
-// }
 
 function textDiff(text1, text2) {
     const dmp = new diff_match_patch();
@@ -1455,14 +1392,6 @@ async function handlePdfScanAndProcess({
         if (spinner) spinner.style.display = 'none';
     }
 }
-
-// async function pdfScanGrammar() {
-//     await handlePdfScanAndProcess({
-//         apiEndpoint: 'mistralGrammar',
-//         boxClass: 'grammarBox',
-//         resultKey: 'result',
-//     });
-// }
 
 async function pdfScanGrammar() {
     const file = getSelectedFile();
