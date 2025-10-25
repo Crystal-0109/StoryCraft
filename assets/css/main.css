@@ -59,7 +59,7 @@
     box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
 }
 .record-btn.start:disabled {
-    opacity: 0.6;
+    opacity: 0.3;
     cursor: not-allowed;
 }
 
@@ -74,7 +74,7 @@
     box-shadow: 0 6px 16px rgba(239, 83, 80, 0.4);
 }
 .record-btn.stop:disabled {
-    opacity: 0.6;
+    opacity: 0.3;
     cursor: not-allowed;
 }
 
@@ -550,6 +550,9 @@ del {
 }
 .resultAreaPdfDownloadBtn_SC {
     margin-left: auto;
+    margin-top: 0;
+    margin-bottom: 0;
+    margin-right: 0;
     background-color: #f7f7fb;
     border: none;
     font-size: 40px;

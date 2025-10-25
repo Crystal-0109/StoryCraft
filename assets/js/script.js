@@ -161,7 +161,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rewriteBtn) {
         rewriteBtn.addEventListener('click', mistralRewrite);
     }
-
+    const summaryBtn = document.getElementById('summaryBtn');
+    if (summaryBtn) {
+        summaryBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            summarizeText();
+        });
+    }
+    const expandBtn = document.getElementById('expandBtn');
+    if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            expandText();
+        });
+    }
     const grammarBtn = document.getElementById('grammarBtn');
     if (grammarBtn) {
         grammarBtn.addEventListener('click', mistralGrammar);
@@ -551,7 +564,6 @@ async function mistralRewrite() {
     outerArea.innerHTML = '';
 
     const resultArea = document.createElement('div');
-    resultArea.id = 'rewriteResults';
     outerArea.appendChild(resultArea);
 
     resultArea.innerHTML = '';
@@ -575,7 +587,7 @@ async function mistralRewrite() {
                 '<p style="color: red;">❗ 결과가 비어 있습니다.</p>';
             return;
         }
-        console.log(data.result);
+
         const examples = data.result
             .split(/예시문(?: \d+)?:/)
             .map((text) => text.trim())
@@ -583,41 +595,22 @@ async function mistralRewrite() {
 
         const first = examples[0] || '결과 없음';
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'rewriteBox';
-        wrapper.style.whiteSpace = 'normal';
-        wrapper.style.lineHeight = '1.6';
-        wrapper.style.marginBottom = '20px';
-
-        const label = document.createElement('div');
-        label.style.fontWeight = 'bold';
-        label.style.marginBottom = '5px';
-
-        const content = document.createElement('div');
-        content.id = 'example1';
-        content.style.whiteSpace = 'normal';
-        content.style.lineHeight = '1.6';
-        content.style.margin = '0';
-        content.style.padding = '0';
-
         try {
-            content.innerHTML = highlightDiffWithType(originalText, first);
+            resultArea.innerHTML = highlightDiffWithType(originalText, first);
         } catch (e) {
-            content.innerText = first;
+            resultArea.innerText = first;
             console.warn('highlightDiff 실패, 기본 출력 사용:', e);
         }
 
-        wrapper.appendChild(label);
-        wrapper.appendChild(content);
-        resultArea.appendChild(wrapper);
-
+        // PDF 버튼 이벤트
         const pdfBtn = document.getElementById('pdfDownloadBtn');
         if (pdfBtn) {
             const newBtn = pdfBtn.cloneNode(true);
             newBtn.id = 'pdfDownloadBtn';
             pdfBtn.replaceWith(newBtn);
-            newBtn.addEventListener('click', () =>
-                saveAsPDF(wrapper, '첨삭.pdf')
+            newBtn.addEventListener(
+                'click',
+                () => saveAsPDF(resultArea, '재작성.pdf') // wrapper → resultArea
             );
         }
 
@@ -713,21 +706,10 @@ async function applyStyle() {
 
 async function summarizeText() {
     const userInput = document.getElementById('userInput').value.trim();
-    const resultArea = getActiveResultBox();
+    const resultArea = document.getElementById('resultArea');
     if (!resultArea) return;
 
-    createInlineSpinner(resultArea, '요약 생성 중…');
-
-    // resultArea 범위 안만 정리
-    resultArea.querySelector('#rewriteResults')?.replaceChildren();
-    resultArea.querySelector('#summaryContent')?.remove();
-    resultArea.querySelector('#expandContent')?.remove();
-    Array.from(resultArea.querySelectorAll('h5'))
-        .filter((h) => /요약 결과|확장 결과/.test(h.innerText))
-        .forEach((h) => h.remove());
-
     if (!userInput) {
-        removeInlineSpinner(resultArea);
         alert('입력된 문장이 없습니다.');
         return;
     }
@@ -740,39 +722,31 @@ async function summarizeText() {
         });
         const data = await res.json();
 
-        removeInlineSpinner(resultArea);
-
         const text = (data?.result || '').trim();
         if (text) {
-            const heading = document.createElement('h5');
-            const content = document.createElement('p');
-            content.id = 'summaryContent';
-            content.style.whiteSpace = 'pre-wrap';
-            content.textContent = text;
+            // ✅ 안전하게 표시
+            resultArea.innerHTML = `
+              <p style="white-space: pre-wrap;">${text}</p>
+            `;
+            console.log('🟢 결과 표시됨:', text);
 
-            // PDF 버튼 리바인딩 유지
+            // ✅ PDF 저장 버튼
             const pdfBtn = document.getElementById('pdfDownloadBtn');
             if (pdfBtn) {
                 const newBtn = pdfBtn.cloneNode(true);
                 newBtn.id = 'pdfDownloadBtn';
                 pdfBtn.replaceWith(newBtn);
                 newBtn.addEventListener('click', () =>
-                    saveAsPDF(content, '요약.pdf')
+                    saveAsPDF(resultArea, '요약.pdf')
                 );
             }
-
-            resultArea.appendChild(heading);
-            resultArea.appendChild(content);
         } else {
-            const p = document.createElement('p');
-            p.textContent = `⚠️ 요약 실패: ${data?.error || '알 수 없는 오류'}`;
-            resultArea.appendChild(p);
+            resultArea.innerHTML = `<p>⚠️ 요약 실패: ${
+                data?.error || '알 수 없는 오류'
+            }</p>`;
         }
     } catch (e) {
-        removeInlineSpinner(resultArea);
-        const p = document.createElement('p');
-        p.textContent = '❗요약 요청 중 오류가 발생했습니다.';
-        resultArea.appendChild(p);
+        resultArea.innerHTML = '<p>❗요약 요청 중 오류가 발생했습니다.</p>';
         console.error(e);
     }
 }
@@ -781,25 +755,6 @@ async function expandText() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
     const spinner = document.getElementById('loadingSpinner');
-
-    const rewriteBox = document.getElementById('rewriteResults');
-    if (rewriteBox) rewriteBox.innerHTML = '';
-
-    const oldExpand = document.getElementById('expandContent');
-    if (oldExpand) oldExpand.remove();
-
-    const oldSummary = document.getElementById('summaryContent');
-    if (oldSummary) oldSummary.remove();
-
-    const oldExpandHeading = Array.from(document.querySelectorAll('h5')).find(
-        (el) => el.innerText.includes('확장 결과')
-    );
-    if (oldExpandHeading) oldExpandHeading.remove();
-
-    const oldSummaryHeading = Array.from(document.querySelectorAll('h5')).find(
-        (el) => el.innerText.includes('요약 결과')
-    );
-    if (oldSummaryHeading) oldSummaryHeading.remove();
 
     if (spinner) spinner.style.display = 'block';
 
@@ -819,13 +774,9 @@ async function expandText() {
         const data = await response.json();
 
         if (data.result) {
-            const heading = document.createElement('h5');
-            heading.innerText = '🚀 확장 결과:';
-
-            const content = document.createElement('p');
-            content.id = 'expandContent';
-            content.style.whiteSpace = 'pre-wrap';
-            content.innerText = data.result;
+            resultArea.innerHTML = `
+              <p style="white-space: pre-wrap;">${data.result}</p>
+            `;
 
             const pdfBtn = document.getElementById('pdfDownloadBtn');
             if (pdfBtn) {
@@ -836,9 +787,6 @@ async function expandText() {
                     saveAsPDF(content, '확장.pdf')
                 );
             }
-
-            resultArea.appendChild(heading);
-            resultArea.appendChild(content);
         } else {
             resultArea.innerText = `⚠️ 확장 실패: ${
                 data.error || '알 수 없는 오류'
@@ -1327,17 +1275,7 @@ async function handlePdfScanAndProcess({
         resultArea.innerHTML = '';
 
         if (resultText) {
-            const firstResult =
-                typeof resultText === 'string'
-                    ? resultText.split(/\n{2,}/)[0]
-                    : Array.isArray(resultText)
-                    ? resultText[0]
-                    : resultText;
-
-            const box = document.createElement('div');
-            box.className = boxClass;
-            box.innerHTML = `<p style="white-space: pre-wrap;">${resultText}</p>`;
-            resultArea.appendChild(box);
+            resultArea.innerHTML = `<p style="white-space: pre-wrap;">${resultText}</p>`;
 
             let filename = 'PDF_SCAN_결과.pdf';
             switch (apiEndpoint) {
@@ -1345,7 +1283,7 @@ async function handlePdfScanAndProcess({
                     filename = '스캔_문체_변경.pdf';
                     break;
                 case 'mistralRewrite':
-                    filename = '스캔_첨삭.pdf';
+                    filename = '스캔_재작성.pdf';
                     break;
                 case 'summary':
                     filename = '스캔_요약.pdf';
@@ -1368,8 +1306,9 @@ async function handlePdfScanAndProcess({
             if (pdfBtn) {
                 const newBtn = pdfBtn.cloneNode(true);
                 pdfBtn.replaceWith(newBtn);
-                newBtn.addEventListener('click', () =>
-                    saveAsPDF(box, filename)
+                newBtn.addEventListener(
+                    'click',
+                    () => saveAsPDF(resultArea, filename) // box → resultArea
                 );
             }
         } else {
@@ -3380,7 +3319,7 @@ async function doRewrite() {
 
         apply(out);
     } catch (e) {
-        alert('첨삭 실패: ' + e.message);
+        alert('재작성 실패: ' + e.message);
     } finally {
         showSpin(false);
     }
@@ -7011,7 +6950,7 @@ menu.addEventListener('click', async (e) => {
 
                 apply(out);
             } catch (e) {
-                alert('첨삭 실패: ' + e.message);
+                alert('재작성 실패: ' + e.message);
             } finally {
                 console.log('텍스트 추출 모달에서 재작성 완료');
             }
