@@ -726,7 +726,6 @@ async function summarizeText() {
         const text = (data?.result || '').trim();
         if (text) {
             const heading = document.createElement('h5');
-            heading.innerText = '📚 요약 결과:';
             const content = document.createElement('p');
             content.id = 'summaryContent';
             content.style.whiteSpace = 'pre-wrap';

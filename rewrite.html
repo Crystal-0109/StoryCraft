@@ -91,63 +91,60 @@
             </div>
         </header>
 
-        <main class="main">
-            <!-- Portfolio Section -->
-            <section id="portfolio" class="portfolio section">
-                <!-- Section Title -->
-                <div class="container section-title" data-aos="fade-up">
-                    <h2>Rewrite</h2>
-                    <div class="container">
+        <main class="main page-wrap">
+            <div class="container section-title" data-aos="fade-up">
+                <div class="container">
+                    <div class="page-button">
+                        <button id="rewriteBtn" class="resultBtn_SC">
+                            <span>재작성하기 ✨</span>
+                        </button>
+                        <button
+                            id="summaryBtn"
+                            onclick="summarizeText()"
+                            class="resultBtn_SC"
+                        >
+                            <span>요약하기 ✨</span>
+                        </button>
+                        <button
+                            id="expandBtn"
+                            onclick="expandText()"
+                            class="resultBtn_SC"
+                        >
+                            <span>확장하기 🚀</span>
+                        </button>
+                        <button
+                            id="pdfDownloadBtn"
+                            class="resultAreaPdfDownloadBtn_SC"
+                        >
+                            💾
+                        </button>
+                    </div>
+                    <div class="page-inputResult">
                         <textarea
                             id="userInput"
                             placeholder="여기에 글을 입력하세요..."
                             class="textarea_SC"
                         ></textarea>
-                        <div style="margin-top: 10px">
-                            <button id="rewriteBtn" class="resultBtn_SC">
-                                <span>재작성하기 ✨</span>
-                            </button>
-                            <button
-                                id="summaryBtn"
-                                onclick="summarizeText()"
-                                class="resultBtn_SC"
-                            >
-                                <span>요약하기 ✨</span>
-                            </button>
-                            <button
-                                id="expandBtn"
-                                onclick="expandText()"
-                                class="resultBtn_SC"
-                            >
-                                <span>확장하기 🚀</span>
-                            </button>
+                        <div class="page-arrow">
+                            <span class="arrow"></span>
                         </div>
-                        <div
-                            id="loadingSpinner"
-                            style="
-                                display: none;
-                                text-align: center;
-                                margin: 10px 0;
-                            "
-                        >
-                            ⏳ 처리 중입니다...
-                        </div>
-
                         <div id="resultArea" class="resultArea_SC">
                             <div id="rewriteResults"></div>
                             <!-- 요약/확장 결과용 -->
                         </div>
-                        <button
-                            id="pdfDownloadBtn"
-                            class="resultBtn_SC resultAreaPdfDownloadBtn_SC"
-                        >
-                            결과를 PDF로 다운로드
-                        </button>
+                    </div>
+                    <div
+                        id="loadingSpinner"
+                        style="
+                            display: none;
+                            text-align: center;
+                            margin: 10px 0;
+                        "
+                    >
+                        ⏳ 처리 중입니다...
                     </div>
                 </div>
-                <!-- End Section Title -->
-            </section>
-            <!-- /Portfolio Section -->
+            </div>
         </main>
 
         <footer id="footer" class="footer">

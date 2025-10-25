@@ -89,65 +89,54 @@
             </div>
         </header>
 
-        <main class="main">
-            <!-- Portfolio Section -->
-            <section id="portfolio" class="portfolio section">
-                <!-- Section Title -->
-                <div class="container section-title" data-aos="fade-up">
-                    <h2>Search</h2>
-                    <div class="container">
+        <main class="main page-wrap">
+            <div class="container section-title" data-aos="fade-up">
+                <div class="container">
+                    <div class="page-button">
+                        <button onclick="searchExample()" class="resultBtn_SC">
+                            <span>예문 찾기 🔎</span>
+                        </button>
+                        <button
+                            id="pdfDownloadBtn"
+                            class="resultAreaPdfDownloadBtn_SC"
+                        >
+                            💾
+                        </button>
+                    </div>
+                    <div class="page-inputResult">
                         <textarea
                             id="userInput"
                             placeholder="여기에 글을 입력하세요..."
                             class="textarea_SC"
                         ></textarea>
-
-                        <div>
-                            <button
-                                onclick="searchExample()"
-                                class="resultBtn_SC"
-                            >
-                                <span>예문 찾기 ✨</span>
-                            </button>
-
-                            <div
-                                id="exampleContainer"
-                                class="resultArea_SC"
-                            ></div>
-                            <div
-                                id="loadingSpinner"
-                                style="
-                                    display: none;
-                                    text-align: center;
-                                    margin: 10px 0;
-                                "
-                            >
-                                <div class="spinner"></div>
-                                <p style="margin-top: 5px; color: gray">
-                                    ⏳ 예문을 불러오는 중입니다...
-                                </p>
-                            </div>
-
-                            <button
-                                id="loadMoreBtn"
-                                class="resultBtn_SC"
-                                onclick="loadMoreExamples()"
-                                style="display: none"
-                            >
-                                ➕ 예문 더보기
-                            </button>
+                        <div class="page-arrow">
+                            <span class="arrow"></span>
                         </div>
-                        <button
-                            id="pdfDownloadBtn"
-                            class="resultBtn_SC resultAreaPdfDownloadBtn_SC"
-                        >
-                            결과를 PDF로 다운로드
-                        </button>
+                        <div id="exampleContainer" class="resultArea_SC"></div>
                     </div>
+                    <div
+                        id="loadingSpinner"
+                        style="
+                            display: none;
+                            text-align: center;
+                            margin: 10px 0;
+                        "
+                    >
+                        <div class="spinner"></div>
+                        <p style="margin-top: 5px; color: gray">
+                            ⏳ 예문을 불러오는 중입니다...
+                        </p>
+                    </div>
+                    <button
+                        id="loadMoreBtn"
+                        class="resultBtn_SC"
+                        onclick="loadMoreExamples()"
+                        style="display: none"
+                    >
+                        ➕ 예문 더보기
+                    </button>
                 </div>
-                <!-- End Section Title -->
-            </section>
-            <!-- /Portfolio Section -->
+            </div>
         </main>
 
         <footer id="footer" class="footer">

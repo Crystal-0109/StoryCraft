@@ -93,64 +93,61 @@
             </div>
         </header>
 
-        <main class="main">
-            <!-- Pricing Section -->
-            <section id="pricing" class="pricing section">
-                <!-- Section Title -->
-                <div class="container section-title" data-aos="fade-up">
-                    <h2>Informal <-> Honorific</h2>
-                    <div class="container">
+        <main class="main page-wrap">
+            <div class="container section-title" data-aos="fade-up">
+                <div class="container">
+                    <div class="page-button">
+                        <button
+                            id="honorificBtn"
+                            onclick="cohereHonorific()"
+                            class="resultBtn_SC"
+                        >
+                            <span>높임말 🖊️</span>
+                        </button>
+                        <button
+                            id="informalBtn"
+                            onclick="cohereInformal()"
+                            class="resultBtn_SC"
+                        >
+                            <span>반말 🖊️</span>
+                        </button>
+                        <button
+                            id="pdfDownloadBtn"
+                            class="resultAreaPdfDownloadBtn_SC"
+                        >
+                            💾
+                        </button>
+                    </div>
+                    <div class="page-inputResult">
                         <textarea
                             id="userInput"
                             placeholder="여기에 글을 입력하세요..."
                             class="textarea_SC"
                         ></textarea>
-                        <div>
-                            <button
-                                id="honorificBtn"
-                                onclick="cohereHonorific()"
-                                class="resultBtn_SC"
-                            >
-                                <span>높임말 🖊️</span>
-                            </button>
-                            <button
-                                id="informalBtn"
-                                onclick="cohereInformal()"
-                                class="resultBtn_SC"
-                            >
-                                <span>반말 🖊️</span>
-                            </button>
+                        <div class="page-arrow">
+                            <span class="arrow"></span>
                         </div>
-                        <div
-                            id="loadingSpinner"
-                            style="
-                                display: none;
-                                text-align: center;
-                                margin: 10px 0;
-                            "
-                        >
-                            <div class="spinner"></div>
-                            <p style="margin-top: 5px; color: gray">
-                                ⏳ 처리 중입니다...
-                            </p>
-                        </div>
-
                         <div
                             id="resultArea"
                             class="resultArea_SC"
                             style="text-align: left"
                         ></div>
-                        <button
-                            id="pdfDownloadBtn"
-                            class="resultBtn_SC resultAreaPdfDownloadBtn_SC"
-                        >
-                            결과를 PDF로 다운로드
-                        </button>
+                    </div>
+                    <div
+                        id="loadingSpinner"
+                        style="
+                            display: none;
+                            text-align: center;
+                            margin: 10px 0;
+                        "
+                    >
+                        <div class="spinner"></div>
+                        <p style="margin-top: 5px; color: gray">
+                            ⏳ 처리 중입니다...
+                        </p>
                     </div>
                 </div>
-                <!-- End Section Title -->
-                <!-- /Pricing Section -->
-            </section>
+            </div>
         </main>
 
         <footer id="footer" class="footer">
