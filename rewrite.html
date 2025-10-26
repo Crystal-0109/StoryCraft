@@ -121,15 +121,22 @@
                         </div>
                         <div id="resultArea" class="resultArea_SC"></div>
                     </div>
+                    <!-- Editor overlay spinner -->
                     <div
-                        id="loadingSpinner"
-                        style="
-                            display: none;
-                            text-align: center;
-                            margin: 10px 0;
-                        "
+                        id="edit_spinner"
+                        class="edit_spinner"
+                        aria-hidden="true"
                     >
-                        ⏳ 처리 중입니다...
+                        <div class="edit_spinner__backdrop"></div>
+                        <div
+                            class="edit_spinner__center"
+                            role="status"
+                            aria-live="polite"
+                            aria-label="처리 중"
+                        >
+                            <div class="edit_spinner__ring"></div>
+                            <div class="edit_spinner__label">처리 중…</div>
+                        </div>
                     </div>
                 </div>
             </div>

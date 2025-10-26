@@ -144,6 +144,23 @@
                             ⏳ 처리 중입니다...
                         </p>
                     </div>
+                    <!-- Editor overlay spinner -->
+                    <div
+                        id="edit_spinner"
+                        class="edit_spinner"
+                        aria-hidden="true"
+                    >
+                        <div class="edit_spinner__backdrop"></div>
+                        <div
+                            class="edit_spinner__center"
+                            role="status"
+                            aria-live="polite"
+                            aria-label="처리 중"
+                        >
+                            <div class="edit_spinner__ring"></div>
+                            <div class="edit_spinner__label">처리 중…</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

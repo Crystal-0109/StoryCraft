@@ -98,14 +98,12 @@
                     <div class="page-button">
                         <button
                             id="honorificBtn"
-                            onclick="cohereHonorific()"
                             class="resultBtn_SC"
                         >
                             <span>높임말 🖊️</span>
                         </button>
                         <button
                             id="informalBtn"
-                            onclick="cohereInformal()"
                             class="resultBtn_SC"
                         >
                             <span>반말 🖊️</span>
@@ -132,18 +130,22 @@
                             style="text-align: left"
                         ></div>
                     </div>
+                    <!-- Editor overlay spinner -->
                     <div
-                        id="loadingSpinner"
-                        style="
-                            display: none;
-                            text-align: center;
-                            margin: 10px 0;
-                        "
+                        id="edit_spinner"
+                        class="edit_spinner"
+                        aria-hidden="true"
                     >
-                        <div class="spinner"></div>
-                        <p style="margin-top: 5px; color: gray">
-                            ⏳ 처리 중입니다...
-                        </p>
+                        <div class="edit_spinner__backdrop"></div>
+                        <div
+                            class="edit_spinner__center"
+                            role="status"
+                            aria-live="polite"
+                            aria-label="처리 중"
+                        >
+                            <div class="edit_spinner__ring"></div>
+                            <div class="edit_spinner__label">처리 중…</div>
+                        </div>
                     </div>
                 </div>
             </div>

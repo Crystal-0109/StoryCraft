@@ -326,6 +326,20 @@ function restoreSelectionIfAny() {
 // DOMContentLoaded 이벤트를 사용하여 DOM이 완전히 로드된 이후에 document.getElementById로 요소를 찾도록 수정
 document.addEventListener('DOMContentLoaded', () => {
     // 버튼 클릭 이벤트 바인딩
+    const searchBtn = document.getElementById('searchBtn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            searchExample();
+        });
+    }
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            loadMoreExamples();
+        });
+    }
     const rewriteBtn = document.getElementById('rewriteBtn');
     if (rewriteBtn) {
         rewriteBtn.addEventListener('click', mistralRewrite);
@@ -344,13 +358,30 @@ document.addEventListener('DOMContentLoaded', () => {
             expandText();
         });
     }
+    const styleBtn = document.getElementById('styleBtn');
+    if (styleBtn) {
+        styleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            applyStyle();
+        });
+    }
     const grammarBtn = document.getElementById('grammarBtn');
     if (grammarBtn) {
         grammarBtn.addEventListener('click', mistralGrammar);
     }
-    const grammarBtn2 = document.getElementById('grammarBtn2');
-    if (grammarBtn2) {
-        grammarBtn2.addEventListener('click', mistralGrammar2);
+    const honorificBtn = document.getElementById('honorificBtn');
+    if (honorificBtn) {
+        honorificBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            cohereHonorific();
+        });
+    }
+    const informalBtn = document.getElementById('informalBtn');
+    if (informalBtn) {
+        informalBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            cohereInformal();
+        });
     }
     const pdfScanStyleBtn = document.getElementById('pdfScanStyleBtn');
     if (pdfScanStyleBtn) {
@@ -629,6 +660,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// (선택) 스피너 유틸
+function spin(on) {
+    const ov = document.getElementById('edit_spinner');
+    if (ov) {
+        ov.setAttribute('aria-hidden', String(!on));
+        document.documentElement.classList.toggle('is-edit-loading', !!on);
+    }
+}
+
 async function searchExample() {
     const userInput = document.getElementById('userInput').value.trim();
 
@@ -648,10 +688,11 @@ let lastExtractedText = '';
 async function loadMoreExamples() {
     const userInput = document.getElementById('userInput').value.trim();
     const container = document.getElementById('exampleContainer');
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) spinner.style.display = 'block';
+
+    spin(true); // ✅ 로딩 시작
 
     if (!userInput) {
+        spin(false); // ✅ 에러 시 로딩 해제
         alert('입력된 문장이 없습니다.');
         return;
     }
@@ -710,13 +751,11 @@ async function loadMoreExamples() {
             exampleOffset += examples.length;
 
             const moreBtn = document.getElementById('loadMoreBtn');
-            if (moreBtn) {
-                moreBtn.style.display = 'inline-block';
-            }
+            if (moreBtn) moreBtn.style.display = 'inline-block';
 
             const pdfBtn = document.getElementById('pdfDownloadBtn');
             if (pdfBtn) {
-                pdfBtn.addEventListener('click', () => {
+                pdfBtn.onclick = () => {
                     const container =
                         document.getElementById('exampleContainer');
                     if (!container) {
@@ -726,12 +765,10 @@ async function loadMoreExamples() {
                         return;
                     }
 
-                    // 📋 이모티콘 제거 (innerText를 안전하게 처리)
                     const content = (container.innerText || '')
-                        .replace(/📋/g, '') // 이모티콘 제거
+                        .replace(/📋/g, '')
                         .trim();
 
-                    // saveAsPDF 함수가 존재하는지 확인
                     if (typeof saveAsPDF === 'function') {
                         saveAsPDF(content, '예문 제공.pdf');
                     } else {
@@ -739,7 +776,7 @@ async function loadMoreExamples() {
                             '❌ saveAsPDF 함수가 정의되지 않았습니다.'
                         );
                     }
-                });
+                };
             }
         } else {
             container.innerText = '예문을 불러오지 못했습니다.';
@@ -748,10 +785,9 @@ async function loadMoreExamples() {
         console.error('예문 요청 오류:', error);
         alert('❗ 예문 불러오기 중 오류 발생');
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false); // ✅ 로딩 종료
     }
 }
-
 function rebindRewriteBtn() {
     const currentBtn = document.getElementById('rewriteBtn');
     if (!currentBtn) return;
@@ -767,10 +803,11 @@ async function mistralRewrite() {
     const originalText = userInput;
 
     const outerArea = document.getElementById('resultArea');
-    const spinner = document.getElementById('loadingSpinner');
+    spin(true);
 
     if (!userInput.trim()) {
         alert('입력된 문장이 없습니다.');
+        spin(false);
         return;
     }
 
@@ -780,7 +817,6 @@ async function mistralRewrite() {
     outerArea.appendChild(resultArea);
 
     resultArea.innerHTML = '';
-    if (spinner) spinner.style.display = 'block';
 
     try {
         const response = await fetch(`${BASE_URL}/mistralRewrite`, {
@@ -798,6 +834,7 @@ async function mistralRewrite() {
         if (!data.result || data.result.trim() === '') {
             resultArea.innerHTML =
                 '<p style="color: red;">❗ 결과가 비어 있습니다.</p>';
+            spin(false);
             return;
         }
 
@@ -833,7 +870,7 @@ async function mistralRewrite() {
         resultArea.innerHTML =
             '<p style="color: red;">❗ 요청 중 오류가 발생했습니다.</p>';
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -841,8 +878,7 @@ async function changeStyle(exampleId) {
     const selectedText = document.getElementById(exampleId).innerText.trim();
     const styleRaw = document.getElementById(`${exampleId}-style`).value;
     const style = styleRaw.toLowerCase();
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) spinner.style.display = 'block';
+    spin(true);
 
     console.log('🛠 스타일 적용 요청:', { selectedText, style });
 
@@ -873,7 +909,7 @@ async function changeStyle(exampleId) {
         console.error('스타일 변경 중 오류:', error);
         alert('❗스타일 변경 요청 중 오류가 발생했습니다.');
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -881,14 +917,13 @@ async function applyStyle() {
     const text = document.getElementById('styleInput').value;
     const style = document.getElementById('styleSelector').value;
     const result = document.getElementById('styleResult');
-    const spinner = document.getElementById('loadingSpinner');
-    spinner.style.display = 'block';
+    spin(true);
 
     result.innerText = '';
 
     if (!text.trim()) {
+        spin(false);
         alert('문장을 입력해주세요.');
-        spinner.style.display = 'none';
         return;
     }
 
@@ -913,7 +948,7 @@ async function applyStyle() {
         result.innerText = '❗요청 중 오류 발생';
         console.error(error);
     } finally {
-        spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -921,8 +956,10 @@ async function summarizeText() {
     const userInput = document.getElementById('userInput').value.trim();
     const resultArea = document.getElementById('resultArea');
     if (!resultArea) return;
+    spin(true);
 
     if (!userInput) {
+        spin(false);
         alert('입력된 문장이 없습니다.');
         return;
     }
@@ -961,20 +998,19 @@ async function summarizeText() {
     } catch (e) {
         resultArea.innerHTML = '<p>❗요약 요청 중 오류가 발생했습니다.</p>';
         console.error(e);
+    } finally {
+        spin(false);
     }
 }
 
 async function expandText() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
-    const spinner = document.getElementById('loadingSpinner');
-
-    if (spinner) spinner.style.display = 'block';
+    spin(true);
 
     if (!userInput.trim()) {
+        spin(false);
         alert('입력된 문장이 없습니다.');
-        if (spinner) spinner.style.display = 'none';
-        return;
     }
 
     try {
@@ -1009,21 +1045,21 @@ async function expandText() {
         console.error('확장 요청 중 오류:', error);
         resultArea.innerText = '❗확장 요청 중 오류가 발생했습니다.';
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
 async function mistralGrammar() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) spinner.style.display = 'block';
+    spin(true);
 
     const grammarTable = document.getElementById('grammarTable');
     const tbody = grammarTable ? grammarTable.querySelector('tbody') : null;
 
     if (!tbody) {
         console.log('⚠️ tbody 요소가 없습니다. HTML 구조를 확인하세요.');
+        spin(false);
         return;
     }
     while (tbody.firstChild) {
@@ -1031,6 +1067,7 @@ async function mistralGrammar() {
     }
 
     if (!userInput.trim()) {
+        spin(false);
         alert('입력된 문장이 없습니다.');
         return;
     }
@@ -1206,7 +1243,7 @@ async function mistralGrammar() {
         resultArea.innerText = '❗요청 중 오류가 발생했습니다.' + error;
         console.error('Fetch error:', error);
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -1221,11 +1258,11 @@ function textDiff(text1, text2) {
 async function cohereHonorific() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) spinner.style.display = 'block';
     resultArea.innerHTML = ''; // HTML 내용을 지움
+    spin(true);
 
     if (!userInput.trim()) {
+        spin(false);
         resultArea.innerText = '입력된 문장이 없습니다.';
         return;
     }
@@ -1262,15 +1299,14 @@ async function cohereHonorific() {
         resultArea.innerText = '❗요청 중 오류가 발생했습니다.' + error;
         console.log('Fetch error:', error);
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
 async function cohereInformal() {
     const userInput = document.getElementById('userInput').value;
     const resultArea = document.getElementById('resultArea');
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) spinner.style.display = 'block';
+    spin(true);
     resultArea.innerHTML = ''; // HTML 내용을 지움
 
     if (!userInput.trim()) {
@@ -1310,7 +1346,7 @@ async function cohereInformal() {
         resultArea.innerText = '❗요청 중 오류가 발생했습니다.' + error;
         console.log('Fetch error:', error);
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -1319,11 +1355,11 @@ async function applyTranslation() {
     const sourceLang = document.getElementById('sourceSelector').value;
     const targetLang = document.getElementById('targetSelector').value;
     const resultBox = document.getElementById('translateResult');
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) spinner.style.display = 'block';
     resultBox.innerText = '';
+    spin(true);
 
     if (!text) {
+        spin(false);
         alert('번역할 문장을 입력해주세요.');
         return;
     }
@@ -1362,7 +1398,7 @@ async function applyTranslation() {
         console.error('번역 요청 중 오류:', err);
         resultBox.innerText = '❗ 번역 중 오류가 발생했습니다.';
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -1458,13 +1494,7 @@ async function handlePdfScanAndProcess({
         window.lastExtractedText = extractedText;
     }
 
-    const spinner = document.getElementById('loadingSpinner');
-    if (!spinner || !resultArea) {
-        console.error('❗ spinner 또는 resultArea 요소가 없습니다.');
-        return;
-    }
-
-    spinner.style.display = 'block';
+    spin(true);
 
     const formData = new FormData();
 
@@ -1496,7 +1526,7 @@ async function handlePdfScanAndProcess({
             lastExtractedText = extractedText;
         } else {
             alert('문서를 업로드하거나 텍스트를 먼저 추출해주세요.');
-            spinner.style.display = 'none';
+            spin(false);
             return;
         }
 
@@ -1576,7 +1606,7 @@ async function handlePdfScanAndProcess({
         resultArea.innerHTML = '';
         resultArea.appendChild(errorBox);
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -1588,13 +1618,12 @@ async function pdfScanGrammar() {
     const resultArea =
         document.getElementById('resultArea') ||
         document.getElementById('ocrResult');
-    const spinner = document.getElementById('loadingSpinner');
+    spin(true);
 
     // 초기화
     if (tbody) while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
     if (resultArea) resultArea.textContent = '';
     if (grammarBox) grammarBox.style.display = 'none';
-    if (spinner) spinner.style.display = 'block';
 
     // 0) 웜업(콜드스타트/프리플라이트 완화용)
     try {
@@ -1631,7 +1660,7 @@ async function pdfScanGrammar() {
     }
 
     if (!sourceText) {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
         alert(
             '📄 PDF를 업로드하거나 📷 이미지를 스캔하여 텍스트를 먼저 추출해주세요.'
         );
@@ -1747,7 +1776,7 @@ async function pdfScanGrammar() {
 
         if (grammarBox && tbody && tbody.children.length > 0) {
             grammarBox.style.display = 'block';
-            if (resultArea) resultArea.style.display = 'none';
+            spin(false);
         }
 
         if (!hasError) alert('🎉 틀린 부분이 없습니다.');
@@ -1775,7 +1804,7 @@ async function pdfScanGrammar() {
         }
         if (grammarBox) grammarBox.style.display = 'none';
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -2011,7 +2040,6 @@ function saveAsPDF(content, filename = 'converted.pdf') {
 }
 
 async function performOCR() {
-    const spinner = document.getElementById('loadingSpinner');
     const resultArea =
         document.getElementById('ocrResult') ||
         document.getElementById('resultArea');
@@ -2020,7 +2048,7 @@ async function performOCR() {
     // 초기화
     if (grammarBox) grammarBox.style.display = 'none';
     if (resultArea) resultArea.textContent = '';
-    if (spinner) spinner.style.display = 'block';
+    spin(true);
 
     // 0) 웜업(콜드스타트/프리플라이트 완화)
     try {
@@ -2058,6 +2086,7 @@ async function performOCR() {
             // 파일 없이도 직전 스캔 결과를 재활용(이미지든 문서든 동일)
             extractedText = window.lastExtractedText;
         } else {
+            spin(false);
             alert('이미지 또는 문서를 먼저 업로드해 주세요.');
             return;
         }
@@ -2071,7 +2100,7 @@ async function performOCR() {
         console.error('❌ 스캔 오류:', err);
         alert(`스캔 오류: ${err.message || err}`);
     } finally {
-        if (spinner) spinner.style.display = 'none';
+        spin(false);
     }
 }
 
@@ -2146,6 +2175,7 @@ async function speechStyle(file = null) {
 
     const resultArea = document.getElementById('resultArea');
     const style = document.getElementById('styleSelect').value;
+    spin(true);
 
     try {
         // 음성 → 텍스트 변환
@@ -2171,6 +2201,8 @@ async function speechStyle(file = null) {
     } catch (err) {
         alert('speechStyle 실패: ' + err.message);
         console.error(err);
+    } finally {
+        spin(false);
     }
 }
 
@@ -2183,6 +2215,7 @@ async function speechRewrite() {
     const resultArea = document.getElementById('resultArea');
     const fileInput = document.getElementById('audioFile');
     const file = fileInput ? fileInput.files[0] : null;
+    spin(true);
 
     const formData = new FormData();
     if (file) formData.append('audio', file);
@@ -2220,10 +2253,13 @@ async function speechRewrite() {
         alert('오디오에서 텍스트 추출 실패: ' + err.message);
         console.log(err.message);
         return;
+    } finally {
+        spin(false);
     }
 }
 
 async function speechSummary(file = null) {
+    spin(true);
     try {
         const audio_text = await getSpeechText(file);
 
@@ -2245,10 +2281,13 @@ async function speechSummary(file = null) {
         }
     } catch (err) {
         alert('speechSummary 실패: ' + err.message);
+    } finally {
+        spin(false);
     }
 }
 
 async function speechExpand(file = null) {
+    spin(true);
     try {
         const audio_text = await getSpeechText(file);
 
@@ -2270,10 +2309,13 @@ async function speechExpand(file = null) {
         }
     } catch (err) {
         alert('speechExpand 실패: ' + err.message);
+    } finally {
+        spin(false);
     }
 }
 
 async function speechHonorific(file = null) {
+    spin(true);
     try {
         const audio_text = await getSpeechText(file);
 
@@ -2295,11 +2337,14 @@ async function speechHonorific(file = null) {
         }
     } catch (err) {
         alert('speechHonorific 실패: ' + err.message);
+    } finally {
+        spin(false);
     }
 }
 
 // 반말 변환
 async function speechInformal(file = null) {
+    spin(true);
     try {
         const audio_text = await getSpeechText(file);
 
@@ -2321,11 +2366,14 @@ async function speechInformal(file = null) {
         }
     } catch (err) {
         alert('speechInformal 실패: ' + err.message);
+    } finally {
+        spin(false);
     }
 }
 
 // 번역
 async function speechTranslate(file = null) {
+    spin(true);
     try {
         const audio_text = await getSpeechText(file);
 
@@ -2354,6 +2402,8 @@ async function speechTranslate(file = null) {
         }
     } catch (err) {
         alert('speechTranslate 실패: ' + err.message);
+    } finally {
+        spin(false);
     }
 }
 
@@ -3203,15 +3253,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const textarea = document.getElementById('imagePromptText');
         if (textarea) {
             textarea.value = ''; // 텍스트 지우기
-        }
-    }
-
-    // (선택) 스피너 유틸
-    function spin(on) {
-        const ov = document.getElementById('edit_spinner');
-        if (ov) {
-            ov.setAttribute('aria-hidden', String(!on));
-            document.documentElement.classList.toggle('is-edit-loading', !!on);
         }
     }
 

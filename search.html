@@ -92,7 +92,7 @@
             <div class="container section-title" data-aos="fade-up">
                 <div class="container">
                     <div class="page-button">
-                        <button onclick="searchExample()" class="resultBtn_SC">
+                        <button class="resultBtn_SC" id="searchBtn">
                             <span>예문 찾기 🔎</span>
                         </button>
                         <button
@@ -113,23 +113,26 @@
                         </div>
                         <div id="exampleContainer" class="resultArea_SC"></div>
                     </div>
+                    <!-- Editor overlay spinner -->
                     <div
-                        id="loadingSpinner"
-                        style="
-                            display: none;
-                            text-align: center;
-                            margin: 10px 0;
-                        "
+                        id="edit_spinner"
+                        class="edit_spinner"
+                        aria-hidden="true"
                     >
-                        <div class="spinner"></div>
-                        <p style="margin-top: 5px; color: gray">
-                            ⏳ 예문을 불러오는 중입니다...
-                        </p>
+                        <div class="edit_spinner__backdrop"></div>
+                        <div
+                            class="edit_spinner__center"
+                            role="status"
+                            aria-live="polite"
+                            aria-label="처리 중"
+                        >
+                            <div class="edit_spinner__ring"></div>
+                            <div class="edit_spinner__label">처리 중…</div>
+                        </div>
                     </div>
                     <button
                         id="loadMoreBtn"
                         class="resultBtn_SC"
-                        onclick="loadMoreExamples()"
                         style="display: none"
                     >
                         ➕ 예문 더보기

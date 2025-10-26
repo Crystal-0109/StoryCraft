@@ -190,14 +190,18 @@
                     </div>
                     <div id="translateResult" class="resultArea_SC"></div>
                 </div>
-                <div
-                    id="loadingSpinner"
-                    style="display: none; text-align: center; margin: 10px 0"
-                >
-                    <div class="spinner"></div>
-                    <p style="margin-top: 5px; color: gray">
-                        ⏳ 처리 중입니다...
-                    </p>
+                <!-- Editor overlay spinner -->
+                <div id="edit_spinner" class="edit_spinner" aria-hidden="true">
+                    <div class="edit_spinner__backdrop"></div>
+                    <div
+                        class="edit_spinner__center"
+                        role="status"
+                        aria-live="polite"
+                        aria-label="처리 중"
+                    >
+                        <div class="edit_spinner__ring"></div>
+                        <div class="edit_spinner__label">처리 중…</div>
+                    </div>
                 </div>
             </div>
         </main>
