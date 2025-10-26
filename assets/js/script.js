@@ -15,6 +15,55 @@ var BASE_URL =
 
 /* === [INLINE SPINNER UTILS | put this just after BASE_URL, before DOMContentLoaded] === */
 
+document.addEventListener(
+    'pointerdown',
+    (e) => {
+        const btn = e.target.closest('[data-panel-btn]');
+        if (!btn) return;
+        if (window.__forceFullOnce) return;
+        window.SelectionStore?.save?.();
+        if (window.quill) {
+            const r = window.quill.getSelection(true);
+            if (r && r.length > 0) window.__chatSelStable = r;
+            if (r) window.__lastQuillRange = r;
+        }
+        e.preventDefault();
+    },
+    true
+);
+
+// [B] 패널 내부는 저장만 — 클릭 막지 않음
+document.addEventListener(
+    'pointerdown',
+    (e) => {
+        const drawer = document.getElementById('scDrawer');
+        if (!drawer || !drawer.contains(e.target)) return;
+
+        if (
+            e.target.closest('.sc-scope-controls') ||
+            e.target.closest('[data-skip-prevent="1"]')
+        ) {
+            return;
+        }
+
+        if (window.__forceFullOnce) return;
+
+        // 패널 내부 다른 인터랙션은 선택만 저장
+        const interactive = e.target.closest(
+            'textarea, input, button, [contenteditable], .sc-btn-send'
+        );
+        if (!interactive) return;
+
+        if (window.quill) {
+            const r = window.quill.getSelection(true);
+            if (r && r.length > 0) window.__chatSelStable = r;
+            if (r) window.__lastQuillRange = r;
+        }
+        window.SelectionStore?.save?.();
+    },
+    true
+);
+
 const RESULT_IDS = {
     prompt: 'scChatList', // 대화창 메시지 리스트(필요 시)
     summary: 'smResult',
@@ -150,6 +199,126 @@ function getPanelTipText(key) {
         speech: '음성으로 입력할 수 있습니다. 녹음/정지/삽입 버튼입니다.',
     };
     return map[key] || '이 기능에 대한 설명이 없습니다.';
+}
+
+// ===== 프롬프트 스코프 컨트롤 강제 마운트 유틸 =====
+function ensurePromptScopeControls() {
+    const drawer = document.getElementById('scDrawer');
+    if (!drawer) return false;
+
+    const scope = drawer.querySelector('#scChatScope'); // TPL.prompt 안의 라벨
+    if (!scope) return false;
+
+    // 이미 있으면 재사용
+    let box = scope.nextElementSibling;
+    if (
+        !(box && box.classList && box.classList.contains('sc-scope-controls'))
+    ) {
+        box = document.createElement('div');
+        box.className = 'sc-scope-controls';
+        box.style.display = 'inline-flex';
+        box.style.gap = '8px';
+        box.style.marginLeft = '8px';
+        box.style.verticalAlign = 'middle';
+        box.innerHTML = `
+      <button type="button" class="sc-btn sc-btn--ghost sc-btn--xs" data-role="show-sel"  data-skip-prevent="1">선택 부분 재확인</button>
+      <button type="button" class="sc-btn sc-btn--ghost sc-btn--xs" data-role="clear-sel" data-skip-prevent="1">선택 해제</button>
+    `;
+        scope.insertAdjacentElement('afterend', box);
+    }
+
+    const btnShow = box.querySelector('[data-role="show-sel"]');
+    const btnClear = box.querySelector('[data-role="clear-sel"]');
+
+    // 중복 바인딩 방지
+    if (!btnShow.dataset.bound) {
+        btnShow.dataset.bound = '1';
+        btnShow.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+            const q = window.quill;
+            const r =
+                window.__chatSelStable ||
+                window.__lastQuillRange ||
+                (q && q.getSelection && q.getSelection());
+            if (!q || !r || !Number.isFinite(r.index) || r.length <= 0) return;
+
+            requestAnimationFrame(() => {
+                try {
+                    q.focus();
+                } catch {}
+                requestAnimationFrame(() => {
+                    try {
+                        q.setSelection(r.index, r.length); // 하이라이트 표시
+                        btnClear.focus(); // 바로 다음 클릭 가능하게 버튼으로 포커스 복귀
+                    } catch {}
+                });
+            });
+        });
+    }
+
+    if (!btnClear.dataset.bound) {
+        btnClear.dataset.bound = '1';
+        btnClear.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+
+            window.__lastQuillRange = null;
+            window.__forceFullOnce = true; // 다음 1회 전체 적용
+
+            window.__scopeClearEpoch = (window.__scopeClearEpoch || 0) + 1;
+
+            window.__scopeMode = 'fullOnce';
+            window.__chatSelStable = null;
+
+            const q = window.quill;
+            if (q) {
+                // 현재 selection이 있으면 그 시작 위치, 없으면 0에 커서 고정
+                let caretIndex = 0;
+                try {
+                    const live = q.getSelection(); // null일 수 있음
+                    caretIndex = live ? live.index : 0;
+                } catch {}
+                try {
+                    q.setSelection(caretIndex, 0, 'silent'); // ✅ 하이라이트 제거
+                } catch {}
+
+                // 3) "최근 범위"도 0-길이로 덮어써서 복구 경로 차단
+                window.__lastQuillRange = { index: caretIndex, length: 0 };
+            } else {
+                window.__lastQuillRange = { index: 0, length: 0 };
+            }
+
+            // 라벨 갱신 함수가 있으면 호출
+            try {
+                const drawer = document.getElementById('scDrawer');
+                const scopeEl = drawer?.querySelector('#scChatScope');
+                if (scopeEl && q) {
+                    const len = Math.max(0, q.getLength() - 1);
+                    scopeEl.textContent = `텍스트: 선택 없음 → 전체 문서(${len.toLocaleString()}자)`;
+                }
+            } catch {}
+            requestAnimationFrame(() => {
+                try {
+                    window.quill?.focus();
+                } catch {}
+            });
+        });
+    }
+
+    return true;
+}
+function restoreSelectionIfAny() {
+    if (window.__forceFullOnce) return; // 전체 1회 강제면 복구 금지
+    const snap = window.__chatSelStable;
+    if (!snap || !window.quill) return;
+    try {
+        window.quill.setSelection(
+            snap.index,
+            Math.max(snap.length || 0, 0),
+            'silent'
+        );
+    } catch {}
 }
 
 /* === [/INLINE SPINNER UTILS] === */
@@ -414,6 +583,50 @@ document.addEventListener('DOMContentLoaded', () => {
             imagePromptChange();
         });
     }
+
+    ['btn-prompt-change', 'promptIcon', 'openPromptPanelBtn'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('mousedown', (e) => {
+            SelectionStore.save?.();
+            e.preventDefault();
+        });
+        el.addEventListener('click', () =>
+            setTimeout(() => SelectionStore.restore?.(), 0)
+        );
+    });
+
+    // 모든 패널 버튼 클릭 시 선택 영역 유지
+    const panelBtnIds = [
+        'rewriteBtn',
+        'grammarBtn',
+        'summaryBtn',
+        'expandBtn',
+        'styleBtn',
+        'honorificBtn',
+        'informalBtn',
+        'translateBtn',
+    ];
+
+    panelBtnIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        el.addEventListener('mousedown', (e) => {
+            if (window.SelectionStore?.save) {
+                window.SelectionStore.save();
+            }
+            e.preventDefault(); // 클릭 직전에 selection 유지
+        });
+
+        el.addEventListener('click', () => {
+            setTimeout(() => {
+                if (window.SelectionStore?.restore) {
+                    window.SelectionStore.restore();
+                }
+            }, 0);
+        });
+    });
 });
 
 async function searchExample() {
@@ -832,6 +1045,11 @@ async function mistralGrammar() {
         });
 
         const data = await response.json();
+        const raw = (data?.result ?? '').toString();
+        if (!raw) {
+            resultArea.innerText = '⚠️ 결과가 비어 있습니다.';
+            return;
+        }
         const text = data.result;
 
         if (text) {
@@ -839,6 +1057,24 @@ async function mistralGrammar() {
                 .split(/\n+/)
                 .map((line) => line.trim())
                 .filter((line) => line.length > 0); // 여기서 빈 줄 제거됨
+
+            if (
+                lines.length >= 2 &&
+                (/예시/.test(lines[0]) || /교정문/.test(lines[0])) &&
+                (/예시/.test(lines[1]) || /규범/.test(lines[1]))
+            ) {
+                lines.splice(0, 2);
+            }
+
+            for (let i = 0; i < lines.length; i++) {
+                lines[i] = lines[i]
+                    .replace(/\s*\(?\s*예시\s*교정문\s*\)?\.?$/g, '')
+                    .replace(/^\s*예시\s*규범.*$/g, '')
+                    .trim();
+            }
+            for (let i = lines.length - 1; i >= 0; i--) {
+                if (!lines[i]) lines.splice(i, 1);
+            }
 
             const table = document.getElementById('grammarTable');
 
@@ -849,14 +1085,26 @@ async function mistralGrammar() {
 
             let hasError = false; // 틀린 문장이 하나라도 발견되었음을 기록
 
-            for (let i = 0; i < lines.length; i += 4) {
-                const cleanLine1 = removeIcons(lines[i]);
-                const cleanLine2 = removeIcons(lines[i + 1]);
+            for (let i = 0; i + 3 < lines.length; i += 4) {
+                const cleanLine1 = removeIcons(lines[i]).replace(
+                    /\s*\(?\s*예시\s*교정문\s*\)?\.?$/g,
+                    ''
+                );
+                const cleanLine2 = removeIcons(lines[i + 1]).replace(
+                    /^\s*예시\s*규범.*$/g,
+                    ''
+                );
                 const cleanLine3 = removeIcons(lines[i + 2]);
                 const cleanLine4 = removeIcons(lines[i + 3]);
 
-                if (cleanLine1 === cleanLine2) {
-                    // 맞는 문장이면 기록하지 않고 넘어감
+                if (
+                    /예시|규범/.test(cleanLine1) ||
+                    /예시|규범/.test(cleanLine2)
+                ) {
+                    continue;
+                }
+
+                if (!cleanLine1 || !cleanLine2 || cleanLine1 === cleanLine2) {
                     continue;
                 }
 
@@ -2765,23 +3013,28 @@ document.addEventListener('DOMContentLoaded', () => {
         __sizeRange = null;
     });
 
-    quill.setSelection(0, 0, 'silent');
-    quill.format('font', 'malgun', 'silent');
+    if (quill) {
+        try {
+            quill.setSelection(0, 0, 'silent');
+        } catch {}
+        try {
+            quill.format('font', 'malgun', 'silent');
+        } catch {}
+    }
 
     const fontSel = document.querySelector('.ql-font');
-    if (fontSel) fontSel.value = 'malgun';
+    if (fontSel) {
+        fontSel.value = 'malgun';
+    }
 
     const input = document.getElementById('ocrFile');
     const nameEl = document.getElementById('ocrFileName');
-    if (input && nameEl) {
+    if (input) {
         input.addEventListener('change', function () {
             const file = this.files && this.files[0];
-            if (file) {
-                nameEl.textContent = file.name;
-                nameEl.hidden = false;
-            } else {
-                nameEl.textContent = '';
-                nameEl.hidden = true;
+            if (nameEl) {
+                nameEl.textContent = file ? file.name : '';
+                setHiddenSafe(nameEl, !file);
             }
         });
     }
@@ -3646,27 +3899,61 @@ async function editorInsertRecording() {
 }
 
 async function sendPromptChange() {
-    const prompt = document.getElementById('promptText').value;
-    console.log(prompt);
-    const range = quill.getSelection(true); // 현재 커서 위치
+    const promptEl = document.getElementById('promptText');
+    const prompt = (promptEl?.value ?? '').trim();
+    if (!prompt) {
+        alert('프롬프트를 입력하세요.');
+        return;
+    }
 
-    const { text, apply } = getQuillSelectionOrAll();
-    const content = (text || '').trim();
-    console.log(content);
+    // (선택 저장/복원 사용 중이라면) 복원 먼저
+    if (window.SelectionStore?.restore) {
+        try {
+            SelectionStore.restore();
+        } catch {}
+    }
 
-    const cursorPos = range.index; // 현재 커서 위치
-    const length = range.length; // 선택된 길이 (없으면 0)
+    // 현재 선택 (에디터에 포커스가 없으면 null)
+    let range = quill.getSelection(true);
+    if (!range) {
+        // 포커스가 없어 selection을 못 받았다면 일단 0 위치로 가드
+        quill.focus();
+        range = { index: 0, length: 0 };
+    }
 
-    // text는 이미 선택된 텍스트
-    // 전체 content에서 앞/뒤 분리
-    const before = content.substring(0, cursorPos);
-    const selected = content.substring(cursorPos, cursorPos + length);
-    const after = content.substring(cursorPos + length);
+    // “문서 전체” 기준 원본
+    const full = quill.getText(); // 끝에 개행 포함 가능
+    const cursorPos = Math.max(0, Math.min(range.index, full.length));
+    const length = Math.max(
+        0,
+        Math.min(range.length || 0, full.length - cursorPos)
+    );
 
-    console.log('앞부분:', before);
-    console.log('선택된 부분:', selected);
-    console.log('뒷부분:', after);
+    const before = full.slice(0, cursorPos);
+    const selected = full.slice(cursorPos, cursorPos + length);
+    const after = full.slice(cursorPos + length);
 
+    // getQuillSelectionOrAll은 “적용 방식(apply)”만 쓰고,
+    // 원본 텍스트(content)는 이제 full/selected로 직접 컨트롤
+    const { apply } = getQuillSelectionOrAll?.() || {
+        apply: (out) => {
+            // 선택이 있었으면 교체, 없으면 전체 교체
+            if (length > 0) {
+                quill.deleteText(cursorPos, length, 'user');
+                quill.insertText(cursorPos, out, 'user');
+                quill.setSelection(cursorPos + out.length, 0, 'silent');
+            } else {
+                quill.setText(out, 'user');
+                quill.setSelection(
+                    Math.min(out.length, cursorPos),
+                    0,
+                    'silent'
+                );
+            }
+        },
+    };
+
+    // “커서/현재 위치” 키워드 탐지
     const words = [
         '커서',
         '현재 커서',
@@ -3677,43 +3964,31 @@ async function sendPromptChange() {
         '현재 위치',
         '현재위치',
     ];
+    const hasWord = words.some((w) => prompt.includes(w));
 
-    const hasWord = words.some((word) => prompt.includes(word));
-
-    if (!content) {
-        alert('내용을 입력하세요.');
-        return;
-    }
-    showSpin(true);
-    if (hasWord) {
-        try {
-            const response = await fetch(`${BASE_URL}/promptAdd`, {
+    showSpin?.(true);
+    try {
+        if (hasWord) {
+            // 커서 앞뒤만 서버에 넘기고, 결과를 커서 위치에 삽입
+            const res = await fetch(`${BASE_URL}/promptAdd`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    before: before,
-                    after: after,
-                    prompt: prompt,
-                }),
+                body: JSON.stringify({ before, after, prompt }),
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const out = (data?.result ?? '').trim();
+            if (!out) throw new Error('빈 결과');
 
-            const data = await response.json();
-            if (data.result) {
-                quill.insertText(range.index, data.result, 'user');
-                // 커서를 삽입한 텍스트 뒤로 이동
-                quill.setSelection(range.index + data.result.length, 0);
-            } else {
-                alert('data.result가 없습니다.');
-            }
-        } catch {
-            alert('프롬프트 추가 실패: ' + e.message);
-        } finally {
-            showSpin(false);
-        }
-    } else {
-        try {
+            // 선택이 있으면 먼저 지우고 결과 삽입
+            if (length > 0) quill.deleteText(cursorPos, length, 'user');
+            quill.insertText(cursorPos, out, 'user');
+            quill.setSelection(cursorPos + out.length, 0, 'silent');
+        } else {
+            // 선택이 있으면 선택만, 없으면 전체를 바꾸는 흐름
+            // 서버에는 전체 또는 선택을 넘길 수 있음. 여기선 “내용 전체”로 유지하고, 적용은 apply가 처리.
             const data = await postJSON(`${BASE_URL}/promptChange`, {
-                content: content,
+                content: full, // ★ 전체 텍스트 보내기 (여기가 핵심)
                 prompt: prompt,
             });
             const out = (
@@ -3726,11 +4001,11 @@ async function sendPromptChange() {
             ).trim();
             if (!out) throw new Error('빈 결과');
             apply(out);
-        } catch (e) {
-            alert('프롬프트 수정 실패: ' + e.message);
-        } finally {
-            showSpin(false);
         }
+    } catch (e) {
+        alert('프롬프트 처리 실패: ' + (e?.message || e));
+    } finally {
+        showSpin?.(false);
     }
 }
 
@@ -3885,8 +4160,8 @@ async function imagePromptChange() {
     </div>
   `,
             foot: `
-    <button id="scChatApply" class="sc-btn" disabled>마지막 응답 적용</button>
-    <button id="scChatCopy"  class="sc-btn" disabled>마지막 응답 복사</button>
+    <button id="scChatApply" class="sc-btn" disabled>적용</button>
+    <button id="scChatCopy"  class="sc-btn" disabled>복사</button>
     <button id="scChatNew"   class="sc-btn">새 대화</button>
   `,
         },
@@ -4004,8 +4279,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scTranslateRun" class="sc-btn sc-btn--primary">번역</button>
-    <button id="trApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="trCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="trApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="trCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
 
@@ -4053,8 +4328,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scStyleRun" class="sc-btn sc-btn--primary">변환</button>
-    <button id="stApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="stCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="stApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="stCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
 
@@ -4100,8 +4375,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scHonorRun" class="sc-btn sc-btn--primary">변환</button>
-    <button id="hnApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="hnCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="hnApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="hnCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
 
@@ -4134,8 +4409,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scInformalRun" class="sc-btn sc-btn--primary">변환</button>
-    <button id="ifmApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="ifmCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="ifmApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="ifmCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
 
@@ -4168,8 +4443,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scRewriteRun" class="sc-btn sc-btn--primary">재작성</button>
-    <button id="rwApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="rwCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="rwApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="rwCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
 
@@ -4215,8 +4490,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scSummaryRun" class="sc-btn sc-btn--primary">요약</button>
-    <button id="smApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="smCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="smApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="smCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
 
@@ -4277,8 +4552,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scExpandRun" class="sc-btn sc-btn--primary">확장</button>
-    <button id="exApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="exCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="exApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="exCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
 
@@ -4312,8 +4587,8 @@ async function imagePromptChange() {
   `,
             foot: `
     <button id="scGrammarRun" class="sc-btn sc-btn--primary">교정</button>
-    <button id="grApply" class="sc-btn sc-btn--ghost" disabled>마지막 응답 적용</button>
-    <button id="grCopy"  class="sc-btn sc-btn--ghost" disabled>마지막 응답 복사</button>
+    <button id="grApply" class="sc-btn sc-btn--ghost" disabled>적용</button>
+    <button id="grCopy"  class="sc-btn sc-btn--ghost" disabled>복사</button>
   `,
         },
     };
@@ -4364,6 +4639,8 @@ async function imagePromptChange() {
             'AI Panel';
         if (titleEl) {
             titleEl.textContent = nextTitle;
+            // ⬇️ 기존 i 제거 후 다시 추가 (중복 방지)
+            titleEl.querySelector('.sc-info')?.remove();
             titleEl.insertAdjacentHTML(
                 'beforeend',
                 `<span class="sc-info" data-tip="${getPanelTipText(
@@ -4377,6 +4654,23 @@ async function imagePromptChange() {
         if (footEl) footEl.innerHTML = tpl.foot || '';
 
         getActiveResultBox();
+
+        if (key === 'prompt') {
+            ensurePromptScopeControls();
+            try {
+                window.__scPromptControlsMO?.disconnect();
+            } catch {}
+            const drawerBodyEl = document.getElementById('scDrawerBody');
+            if (drawerBodyEl) {
+                window.__scPromptControlsMO = new MutationObserver(() => {
+                    ensurePromptScopeControls();
+                });
+                window.__scPromptControlsMO.observe(drawerBodyEl, {
+                    childList: true,
+                    subtree: true,
+                });
+            }
+        }
 
         // 5) 열기
         drawer?.classList.add('open');
@@ -4491,11 +4785,16 @@ async function imagePromptChange() {
 
                 if (window.quill?.on) {
                     window.quill.on('selection-change', (range) => {
-                        window.__lastQuillRange = range || {
-                            index: 0,
-                            length: 0,
-                        };
-                        if (range) window.__chatSelStable = range;
+                        if (range) {
+                            // 커서만 이동(길이 0)은 last만 갱신, stable은 그대로 유지
+                            window.__lastQuillRange = range;
+                            if (range.length > 0) {
+                                // 실제 드래그 선택일 때만 stable 갱신
+                                window.__chatSelStable = range;
+                            }
+                        } else {
+                            // blur(null) 시에는 아무것도 덮어쓰지 않음 (유지)
+                        }
                     });
                 }
 
@@ -4513,10 +4812,19 @@ async function imagePromptChange() {
                             scope.textContent = '텍스트: 에디터 없음';
                             return;
                         }
-                        const sel = q.getSelection() ??
+                        const live = q.getSelection() ??
                             window.__lastQuillRange ?? { index: 0, length: 0 };
-                        if (sel && sel.length > 0) {
-                            scope.textContent = `텍스트: 선택 ${sel.length.toLocaleString()}자`;
+                        const snap = window.__chatSelStable;
+                        const effective =
+                            live && live.length > 0 ? live : snap || live;
+
+                        if (effective && effective.length > 0) {
+                            const isSnap =
+                                !(live && live.length > 0) &&
+                                !!(snap && snap.length > 0);
+                            scope.textContent =
+                                `텍스트: 선택 ${effective.length.toLocaleString()}자` +
+                                (isSnap ? ' (고정)' : '');
                         } else {
                             const len = Math.max(0, q.getLength() - 1);
                             scope.textContent = `텍스트: 선택 없음 → 전체 문서(${len.toLocaleString()}자)`;
@@ -4528,6 +4836,70 @@ async function imagePromptChange() {
                     window.quill.on('selection-change', updateScopeLabel);
                     window.quill.on('text-change', updateScopeLabel);
                 }
+
+                //ensurePromptScopeControls()로 대체
+
+                /*(function attachScopeControls() {
+  if (!scope) return;
+
+  // 중복 방지
+  if (scope.nextElementSibling &&
+      scope.nextElementSibling.classList?.contains('sc-scope-controls')) return;
+
+  const box = document.createElement('div');
+  box.className = 'sc-scope-controls';
+  box.style.display = 'inline-flex';
+  box.style.gap = '8px';
+  box.style.marginLeft = '8px';
+  box.style.verticalAlign = 'middle';
+
+  const btnShow = document.createElement('button');
+  btnShow.type = 'button';
+  btnShow.textContent = '선택 다시 표시';
+  btnShow.className = 'sc-btn sc-btn--ghost sc-btn--xs';
+
+  const btnClear = document.createElement('button');
+  btnClear.type = 'button';
+  btnClear.textContent = '선택 해제(전체)';
+  btnClear.className = 'sc-btn sc-btn--ghost sc-btn--xs';
+
+  // 3번 우회 쓰려면 표식 달기(선택)
+  btnShow.setAttribute('data-skip-prevent', '1');
+  btnClear.setAttribute('data-skip-prevent', '1');
+
+  box.appendChild(btnShow);
+  box.appendChild(btnClear);
+  scope.insertAdjacentElement('afterend', box);
+
+  // 선택 다시 표시 (포커스→선택→다시 버튼 포커스)
+  btnShow.addEventListener('click', (evt) => {
+    evt.preventDefault();
+    evt.stopPropagation();
+    const q = window.quill;
+    const r = window.__chatSelStable || window.__lastQuillRange || (q && q.getSelection && q.getSelection());
+    if (!q || !r || !Number.isFinite(r.index) || r.length <= 0) return;
+
+    requestAnimationFrame(() => {
+      try { q.focus(); } catch {}
+      requestAnimationFrame(() => {
+        try {
+          q.setSelection(r.index, r.length); // 하이라이트
+          btnClear.focus();                  // 바로 다음 액션 가능
+        } catch {}
+      });
+    });
+  });
+
+  // 선택 해제(전체)
+  btnClear.addEventListener('click', (evt) => {
+    evt.preventDefault();
+    evt.stopPropagation();
+    window.__chatSelStable = null;
+    window.__lastQuillRange = null;
+    window.__forceFullOnce = true;  // 다음 1회 전체 적용
+    updateScopeLabel();
+  });
+})();*/
 
                 function addMsg(role, text, { typing = false } = {}) {
                     const wrap = document.createElement('div');
@@ -4746,7 +5118,6 @@ async function imagePromptChange() {
                     );
                     list.scrollTop = list.scrollHeight;
                 }
-
                 send?.addEventListener('click', sendNow);
                 input?.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -4755,10 +5126,24 @@ async function imagePromptChange() {
                     }
                 });
                 send?.addEventListener('mousedown', () => {
+                    if (window.__forceFullOnce) return;
+
+                    const q = window.quill;
+                    if (q) {
+                        const r =
+                            q.getSelection() || window.__lastQuillRange || null;
+                        window.__lastQuillRange = r;
+                        window.__chatSelStable = r;
+                    }
+                });
+                dock?.addEventListener('mousedown', () => {
+                    if (window.__forceFullOnce) return;
                     if (window.quill) {
-                        window.__lastQuillRange =
+                        const r =
                             window.quill.getSelection() ||
                             window.__lastQuillRange;
+                        window.__lastQuillRange = r;
+                        window.__chatSelStable = r;
                     }
                 });
 
@@ -4798,10 +5183,7 @@ async function imagePromptChange() {
                     if (!lastText) return;
                     await navigator.clipboard.writeText(lastText);
                     btnCp.textContent = '복사됨';
-                    setTimeout(
-                        () => (btnCp.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (btnCp.textContent = '복사'), 1200);
                 });
 
                 btnAp?.addEventListener('click', () => {
@@ -4832,15 +5214,27 @@ async function imagePromptChange() {
 
                     const docLen = Math.max(0, q.getLength() - 1);
 
+                    // 우선순위: 클릭 직전 스냅샷 > 고정 스냅샷 > 현재 선택/커서 > 문서 끝
                     let sel = __apSnapSel ||
-                        q.getSelection() ||
                         window.__chatSelStable ||
-                        window.__lastQuillRange || { index: docLen, length: 0 };
+                        q.getSelection(true) || { index: docLen, length: 0 };
 
+                    if (window.__forceFullOnce) {
+                        // 전체 적용 1회 강제
+                        sel = {
+                            index: 0,
+                            length: Math.max(0, q.getLength() - 1),
+                        };
+                        lastPlan = { mode: 'full' };
+                        lastFirst = true;
+                        window.__forceFullOnce = false; // 일회성 플래그 해제
+                    }
+
+                    // 문서 전체 길이만큼 선택된 경우(=전체문서)면 안전하게 삽입 모드로 전환
                     if (sel && sel.length >= docLen)
                         sel = { index: sel.index, length: 0 };
 
-                    // 사용자가 지금 선택한 게 있으면 선택 치환이 항상 우선
+                    // 선택 치환 우선
                     if (sel && sel.length > 0) {
                         q.deleteText(sel.index, sel.length, 'user');
                         q.insertText(sel.index, lastText, 'user');
@@ -4851,7 +5245,6 @@ async function imagePromptChange() {
                         );
                         lastFirst = false;
                     } else if (lastPlan?.mode === 'full' && lastFirst) {
-                        // 첫 1회에 한해 전체 갈아끼우기
                         q.setText(lastText);
                         q.setSelection(
                             Math.max(0, lastText.length - 1),
@@ -4860,15 +5253,8 @@ async function imagePromptChange() {
                         );
                         lastFirst = false;
                     } else {
-                        // 그 외 커서 없으면 문서 끝에 삽입
-                        const cur = q.getSelection(true) || {
-                            index: docLen,
-                            length: 0,
-                        };
                         const pos =
-                            typeof sel.index === 'number'
-                                ? sel.index
-                                : cur.index;
+                            typeof sel.index === 'number' ? sel.index : docLen;
                         q.insertText(pos, lastText, 'user');
                         q.setSelection(pos + lastText.length, 0, 'silent');
                         lastFirst = false;
@@ -4937,10 +5323,16 @@ async function imagePromptChange() {
                 })();
 
                 const selText = getEditorSelectionText?.();
-                if (selText) {
-                    input.value = '';
-                }
-                input?.focus();
+                if (selText) input.value = '';
+
+                setTimeout(() => {
+                    const sel = window.quill?.getSelection?.();
+                    const hasSelection = !!(sel && sel.length > 0);
+                    if (!hasSelection) {
+                        document.getElementById('scChatInput')?.focus();
+                    }
+                }, 60);
+
                 break;
             }
             case 'translate': {
@@ -5169,10 +5561,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 if (currentScope() === 'sel' && window.quill) {
@@ -5363,10 +5752,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
@@ -5564,10 +5950,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
@@ -5761,10 +6144,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
@@ -5960,10 +6340,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
@@ -6192,10 +6569,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
@@ -6279,19 +6653,22 @@ async function imagePromptChange() {
                     return r ? r.value : 'length';
                 }
                 function syncExCtrls() {
-                    const mode = currentMode();
+                    if (!drawer) return;
+                    const mode = currentMode && currentMode();
+                    if (!mode) return;
                     const lenCtrls =
-                        drawer.querySelectorAll('.ex-ctrl--length');
-                    const sentCtrls = drawer.querySelectorAll(
-                        '.ex-ctrl--sentences'
+                        drawer.querySelectorAll?.('.ex-ctrl--length') || [];
+                    const sentCtrls =
+                        drawer.querySelectorAll?.('.ex-ctrl--sentences') || [];
+                    [...lenCtrls].forEach((el) =>
+                        setHiddenSafe(el, mode !== 'length')
                     );
-                    lenCtrls.forEach((el) => (el.hidden = mode !== 'length'));
-                    sentCtrls.forEach(
-                        (el) => (el.hidden = mode !== 'sentences')
+                    [...sentCtrls].forEach((el) =>
+                        setHiddenSafe(el, mode !== 'sentences')
                     );
                 }
-                modeWrap?.addEventListener('change', syncExCtrls);
-                syncExCtrls();
+                if (modeWrap) modeWrap.addEventListener('change', syncExCtrls);
+                document.addEventListener('DOMContentLoaded', syncExCtrls);
 
                 // 실행
                 btnRun?.addEventListener('click', async () => {
@@ -6452,10 +6829,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
@@ -6674,10 +7048,7 @@ async function imagePromptChange() {
                     await navigator.clipboard.writeText(txt);
                     const b = btnCopy;
                     b.textContent = '복사됨';
-                    setTimeout(
-                        () => (b.textContent = '마지막 응답 복사'),
-                        1200
-                    );
+                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
