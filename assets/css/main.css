@@ -31,7 +31,7 @@
 #startRecord,
 #stopRecord {
     display: inline-block;
-    /* margin: 15px 10px; */
+    margin-top: 5px;
 }
 
 /* 공통 버튼 스타일 */
@@ -45,7 +45,6 @@
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     font-size: 30px;
-    margin: 0;
 }
 
 /* 녹음 시작 버튼 */
@@ -231,7 +230,6 @@
 #grammarTable {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
     table-layout: fixed;
     border: 1px solid #000;
 }
