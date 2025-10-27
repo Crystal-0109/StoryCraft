@@ -33,6 +33,7 @@ from io import BytesIO
 import imageio_ffmpeg
 from hanspell import spell_checker
 from typing import Optional
+from datetime import datetime
 
 try:
     import kss
@@ -259,6 +260,7 @@ AGENT_ID_SUMMARY = os.getenv("MISTRAL_AGENT_ID_SUMMARY")
 AGENT_ID_REWRITE = os.getenv("MISTRAL_AGENT_ID_REWRITE")
 AGENT_ID_GRAMMAR = os.getenv("MISTRAL_AGENT_ID_GRAMMAR")
 AGENT_ID_GRAMMAR2 = os.getenv("MISTRAL_AGENT_ID_GRAMMAR2")
+AGENT_ID_GRAMMAR3 = os.getenv("MISTRAL_AGENT_ID_GRAMMAR3")
 COHERE_API_KEY = os.getenv("COHERE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -714,7 +716,7 @@ async def mistral_grammar(content: TextInput):
         "Content-Type": "application/json"
     }
     payload = {
-        "agent_id": AGENT_ID_GRAMMAR,
+        "agent_id": AGENT_ID_GRAMMAR3,
         "messages": [
             {"role": "user", "content": content.content}
         ]
@@ -730,7 +732,7 @@ async def mistral_grammar(content: TextInput):
         return {"error": f"HTTP 오류: {response.status_code}", "detail": response.text}
 
     result = response.json()
-    # print("Mistral 응답:", result)
+    print("Mistral 응답:", result)
 
     try:
         message = result["choices"][0]["message"]["content"]
@@ -740,6 +742,7 @@ async def mistral_grammar(content: TextInput):
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
     print(f"[총 처리 시간] {elapsed_time:.2f}초")
+    print("현재 시간 : ", datetime.now().time())
 
     return {"result": message}
 

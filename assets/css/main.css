@@ -232,6 +232,7 @@
     border-collapse: collapse;
     table-layout: fixed;
     border: 1px solid #000;
+    border-style: hidden;
 }
 #grammarTable th,
 td {
@@ -251,6 +252,11 @@ td {
 #grammarTable thead th {
     background-color: #52558e;
     color: white;
+}
+.grammarTableDiv {
+    border: 1px solid black; /* border 표시 */
+    border-radius: 10px; /* radius 적용 */
+    overflow: hidden; /* 넘치는 건 감춤 */
 }
 .rewriteBox,
 .summaryBox,
