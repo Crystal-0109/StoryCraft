@@ -90,53 +90,55 @@
 
         <main class="main page-wrap">
             <div class="container section-title" data-aos="fade-up">
-                <div class="container">
-                    <div class="page-button">
-                        <button class="resultBtn_SC" id="searchBtn">
-                            <span>예문 찾기 🔎</span>
-                        </button>
-                        <button
-                            id="pdfDownloadBtn"
-                            class="resultAreaPdfDownloadBtn_SC"
-                        >
-                            💾
-                        </button>
-                    </div>
-                    <div class="page-inputResult">
+                <div class="page-inputResult">
+                    <div class="input-wrap">
                         <textarea
                             id="userInput"
                             placeholder="여기에 글을 입력하세요..."
                             class="textarea_SC"
                         ></textarea>
-                        <div class="page-arrow">
-                            <span class="arrow"></span>
-                        </div>
-                        <div id="exampleContainer" class="resultArea_SC"></div>
-                    </div>
-                    <!-- Editor overlay spinner -->
-                    <div
-                        id="edit_spinner"
-                        class="edit_spinner"
-                        aria-hidden="true"
-                    >
-                        <div class="edit_spinner__backdrop"></div>
-                        <div
-                            class="edit_spinner__center"
-                            role="status"
-                            aria-live="polite"
-                            aria-label="처리 중"
+                        <button
+                            id="searchBtn"
+                            class="floating-btn primary"
+                            aria-label="예문 찾기"
                         >
-                            <div class="edit_spinner__ring"></div>
-                            <div class="edit_spinner__label">처리 중…</div>
-                        </div>
+                            <span>예문 찾기 🔎</span>
+                        </button>
                     </div>
-                    <button
-                        id="loadMoreBtn"
-                        class="resultBtn_SC"
-                        style="display: none"
+                    <div class="page-arrow">
+                        <span class="arrow"></span>
+                    </div>
+                    <div class="result-wrap">
+                        <div id="exampleContainer" class="resultArea_SC"></div>
+                        <button
+                            id="loadMoreBtn"
+                            class="floating-btn ghost center"
+                            style="display: none"
+                            aria-label="예문 더보기"
+                        >
+                            ➕ 예문 더보기
+                        </button>
+                        <button
+                            id="pdfDownloadBtn"
+                            class="floating-icon"
+                            title="결과 다운로드"
+                            aria-label="결과 다운로드"
+                        >
+                            💾
+                        </button>
+                    </div>
+                </div>
+                <div id="edit_spinner" class="edit_spinner" aria-hidden="true">
+                    <div class="edit_spinner__backdrop"></div>
+                    <div
+                        class="edit_spinner__center"
+                        role="status"
+                        aria-live="polite"
+                        aria-label="처리 중"
                     >
-                        ➕ 예문 더보기
-                    </button>
+                        <div class="edit_spinner__ring"></div>
+                        <div class="edit_spinner__label">처리 중…</div>
+                    </div>
                 </div>
             </div>
         </main>

@@ -92,35 +92,43 @@
 
         <main class="main page-wrap">
             <div class="container section-title" data-aos="fade-up">
-                <div class="page-button">
-                    <select id="styleSelector">
-                        <option value="casual">구어체</option>
-                        <option value="formal">격식체</option>
-                        <option value="literary">문학체</option>
-                        <option value="academic">학술체</option>
-                    </select>
-                    <button class="resultBtn_SC" id="styleBtn">
-                        문체 변경 ✍️
-                    </button>
-                    <button
-                        id="pdfDownloadBtn"
-                        class="resultAreaPdfDownloadBtn_SC"
-                    >
-                        💾
-                    </button>
-                </div>
                 <div class="page-inputResult">
-                    <textarea
-                        id="styleInput"
-                        placeholder="문장을 입력하세요..."
-                        class="textarea_SC"
-                    ></textarea>
+                    <div class="input-wrap">
+                        <textarea
+                            id="styleInput"
+                            placeholder="문장을 입력하세요..."
+                            class="textarea_SC"
+                        ></textarea>
+
+                        <!-- 하단 버튼 묶음 -->
+                        <div class="btn-cluster">
+                            <select id="styleSelector" class="floating-select">
+                                <option value="casual">구어체</option>
+                                <option value="formal">격식체</option>
+                                <option value="literary">문학체</option>
+                                <option value="academic">학술체</option>
+                            </select>
+
+                            <button class="floating-btn" id="styleBtn">
+                                <span>✍️</span> 문체 변경
+                            </button>
+                        </div>
+                    </div>
                     <div class="page-arrow">
                         <span class="arrow"></span>
                     </div>
-                    <div id="styleResult" class="resultArea_SC"></div>
+                    <div class="result-wrap">
+                        <div id="styleResult" class="resultArea_SC"></div>
+                        <button
+                            id="pdfDownloadBtn"
+                            class="floating-icon"
+                            title="결과 다운로드"
+                            aria-label="결과 다운로드"
+                        >
+                            💾
+                        </button>
+                    </div>
                 </div>
-                <!-- Editor overlay spinner -->
                 <div id="edit_spinner" class="edit_spinner" aria-hidden="true">
                     <div class="edit_spinner__backdrop"></div>
                     <div

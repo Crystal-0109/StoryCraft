@@ -95,42 +95,49 @@
         <main class="main page-wrap">
             <div class="container section-title" data-aos="fade-up">
                 <div class="container">
-                    <div class="page-button">
-                        <button
-                            id="honorificBtn"
-                            class="resultBtn_SC"
-                        >
-                            <span>높임말 🖊️</span>
-                        </button>
-                        <button
-                            id="informalBtn"
-                            class="resultBtn_SC"
-                        >
-                            <span>반말 🖊️</span>
-                        </button>
-                        <button
-                            id="pdfDownloadBtn"
-                            class="resultAreaPdfDownloadBtn_SC"
-                        >
-                            💾
-                        </button>
-                    </div>
                     <div class="page-inputResult">
-                        <textarea
-                            id="userInput"
-                            placeholder="여기에 글을 입력하세요..."
-                            class="textarea_SC"
-                        ></textarea>
+                        <div class="input-wrap">
+                            <textarea
+                                id="userInput"
+                                placeholder="여기에 글을 입력하세요..."
+                                class="textarea_SC"
+                            ></textarea>
+                            <div class="btn-cluster">
+                                <button
+                                    id="honorificBtn"
+                                    class="floating-btn"
+                                    aria-label="높임말로 바꾸기"
+                                >
+                                    높임말
+                                </button>
+                                <button
+                                    id="informalBtn"
+                                    class="floating-btn"
+                                    aria-label="반말로 바꾸기"
+                                >
+                                    반말
+                                </button>
+                            </div>
+                        </div>
                         <div class="page-arrow">
                             <span class="arrow"></span>
                         </div>
-                        <div
-                            id="resultArea"
-                            class="resultArea_SC"
-                            style="text-align: left"
-                        ></div>
+                        <div class="result-wrap">
+                            <div
+                                id="resultArea"
+                                class="resultArea_SC"
+                                style="text-align: left"
+                            ></div>
+                            <button
+                                id="pdfDownloadBtn"
+                                class="floating-icon"
+                                title="결과 다운로드"
+                                aria-label="결과 다운로드"
+                            >
+                                💾
+                            </button>
+                        </div>
                     </div>
-                    <!-- Editor overlay spinner -->
                     <div
                         id="edit_spinner"
                         class="edit_spinner"

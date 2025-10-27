@@ -93,35 +93,52 @@
         <main class="main page-wrap">
             <div class="container section-title" data-aos="fade-up">
                 <div class="container">
-                    <div class="page-button">
-                        <button id="rewriteBtn" class="resultBtn_SC">
-                            <span>재작성하기 ✨</span>
-                        </button>
-                        <button id="summaryBtn" class="resultBtn_SC">
-                            <span>요약하기 ✨</span>
-                        </button>
-                        <button id="expandBtn" class="resultBtn_SC">
-                            <span>확장하기 🚀</span>
-                        </button>
-                        <button
-                            id="pdfDownloadBtn"
-                            class="resultAreaPdfDownloadBtn_SC"
-                        >
-                            💾
-                        </button>
-                    </div>
                     <div class="page-inputResult">
-                        <textarea
-                            id="userInput"
-                            placeholder="여기에 글을 입력하세요..."
-                            class="textarea_SC"
-                        ></textarea>
+                        <div class="input-wrap">
+                            <textarea
+                                id="userInput"
+                                placeholder="여기에 글을 입력하세요..."
+                                class="textarea_SC"
+                            ></textarea>
+                            <div class="btn-cluster">
+                                <button
+                                    id="rewriteBtn"
+                                    class="floating-btn"
+                                    aria-label="재작성하기"
+                                >
+                                    재작성하기
+                                </button>
+                                <button
+                                    id="summaryBtn"
+                                    class="floating-btn"
+                                    aria-label="요약하기"
+                                >
+                                    요약하기
+                                </button>
+                                <button
+                                    id="expandBtn"
+                                    class="floating-btn"
+                                    aria-label="확장하기"
+                                >
+                                    확장하기
+                                </button>
+                            </div>
+                        </div>
                         <div class="page-arrow">
                             <span class="arrow"></span>
                         </div>
-                        <div id="resultArea" class="resultArea_SC"></div>
+                        <div class="result-wrap">
+                            <div id="resultArea" class="resultArea_SC"></div>
+                            <button
+                                id="pdfDownloadBtn"
+                                class="floating-icon"
+                                title="결과 다운로드"
+                                aria-label="결과 다운로드"
+                            >
+                                💾
+                            </button>
+                        </div>
                     </div>
-                    <!-- Editor overlay spinner -->
                     <div
                         id="edit_spinner"
                         class="edit_spinner"

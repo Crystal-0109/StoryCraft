@@ -23,17 +23,27 @@ from google.cloud import translate_v2 as google_translate
 from google.cloud import vision
 import html
 import time
+import io
+import os
+import re
+import zipfile
+import tempfile
 import pathlib
 import subprocess
-import zipfile
 import xml.etree.ElementTree as ET
 import speech_recognition as sr  # 음성인식
 from pydub import AudioSegment
 from io import BytesIO
 import imageio_ffmpeg
 from hanspell import spell_checker
-from typing import Optional
 from datetime import datetime
+from typing import Optional, Tuple, List
+import fitz
+from docx import Document
+from pptx import Presentation
+from openpyxl import load_workbook
+import olefile
+import chardet
 
 try:
     import kss
@@ -175,13 +185,282 @@ def _crop_to_last_boundary(s: str) -> str:
     m = list(re.finditer(r'(다\.|요\.|니다\.)|[.!?…]|[”’"\')\]】〉》」』]', s))
     return s if not m else s[:m[-1].end()]
 
+# 문서 이미지 텍스트 추출 관련
+def ocr_image_bytes(img_bytes: bytes) -> str:
+    if not img_bytes:
+        return ""
+    # ✅ 가드 추가: 초기화 실패시 바로 빈 문자열, 로그 남김
+    if vision_client is None:
+        print("[OCR] vision_client is None (check GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS)")
+        return ""
+    try:
+        image = vision.Image(content=img_bytes)
+        resp = vision_client.text_detection(image=image)
+        raw = ""
+        if getattr(resp, "full_text_annotation", None):
+            raw = resp.full_text_annotation.text or ""
+        elif resp.text_annotations:
+            raw = resp.text_annotations[0].description or ""
+        return clean_ocr_text(raw)
+    except Exception as e:
+        print("⚠️ OCR 실패:", e)
+        return ""
+
+# ---------------------------
+# 포맷별 추출기 (본문 + 내장 이미지)
+# 각 함수는 (본문텍스트, 이미지OCR리스트) 튜플 반환
+# ---------------------------
+def extract_from_image(raw: bytes) -> Tuple[str, List[str]]:
+    # 단일 이미지 파일 자체 OCR
+    return "", [ocr_image_bytes(raw)]
+
+def extract_from_txt(raw: bytes) -> Tuple[str, List[str]]:
+    return detect_text_encoding_and_decode(raw).strip(), []
+
+def extract_from_pdf(raw: bytes) -> Tuple[str, List[str]]:
+    text_parts, ocr_parts = [], []
+    doc = fitz.open(stream=raw, filetype="pdf")
+    for page in doc:
+        # 본문 텍스트
+        text_parts.append(page.get_text())
+        # 페이지 내 이미지 → OCR
+        for img in page.get_images(full=True):
+            xref = img[0]
+            try:
+                meta = doc.extract_image(xref)
+                img_bytes = meta.get("image", b"")
+                if img_bytes:
+                    ocr_parts.append(ocr_image_bytes(img_bytes))
+            except Exception as e:
+                print("pdf image extract err:", e)
+    return "\n".join(text_parts).strip(), [t for t in ocr_parts if t]
+
+def extract_from_docx(raw: bytes) -> Tuple[str, List[str]]:
+    import zipfile
+    import io
+    text_parts, ocr_parts = [], []
+    # 1) 본문 텍스트
+    try:
+        d = Document(io.BytesIO(raw))
+        for p in d.paragraphs:
+            text_parts.append(p.text or "")
+    except Exception as e:
+        print("docx text parse err:", e)
+    # 2) 내장 이미지 (ZIP 스캔)
+    try:
+        found = 0
+        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+            for name in zf.namelist():
+                low = name.lower()
+                if low.startswith("word/media/") and low.split(".")[-1] in (
+                    "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp"
+                ):
+                    ocr_parts.append(ocr_image_bytes(zf.read(name)))
+                    found += 1
+                print(
+                    f"[DOCX] media images found: {found}, ocred: {sum(1 for t in ocr_parts if t)}")
+    except Exception as e:
+        print("docx media zip scan err:", e)
+    return "\n".join(text_parts).strip(), [t for t in ocr_parts if t]
+
+def extract_from_pptx(raw: bytes) -> Tuple[str, List[str]]:
+    import zipfile
+    import io
+    text_parts, ocr_parts = [], []
+    # 1) 본문 텍스트
+    try:
+        prs = Presentation(io.BytesIO(raw))
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if getattr(shape, "has_text_frame", False):
+                    text_parts.append(shape.text or "")
+    except Exception as e:
+        print("pptx text parse err:", e)
+    # 2) 내장 이미지 (ZIP 스캔)
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+            for name in zf.namelist():
+                low = name.lower()
+                if low.startswith("ppt/media/") and low.split(".")[-1] in (
+                    "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp"
+                ):
+                    ocr_parts.append(ocr_image_bytes(zf.read(name)))
+    except Exception as e:
+        print("pptx media zip scan err:", e)
+    return "\n".join(text_parts).strip(), [t for t in ocr_parts if t]
+
+def extract_from_xlsx(raw: bytes) -> Tuple[str, List[str]]:
+    import zipfile
+    import io
+    text_parts, ocr_parts = [], []
+    # 1) 셀 텍스트
+    try:
+        wb = load_workbook(io.BytesIO(raw), data_only=True)
+        for ws in wb.worksheets:
+            for row in ws.iter_rows(values_only=True):
+                vals = [str(c) for c in row if c is not None]
+                if vals:
+                    text_parts.append("\t".join(vals))
+    except Exception as e:
+        print("xlsx text parse err:", e)
+    # 2) 내장 이미지 (ZIP 스캔)
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+            for name in zf.namelist():
+                low = name.lower()
+                if low.startswith("xl/media/") and low.split(".")[-1] in (
+                    "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp"
+                ):
+                    ocr_parts.append(ocr_image_bytes(zf.read(name)))
+    except Exception as e:
+        print("xlsx media zip scan err:", e)
+    return "\n".join(text_parts).strip(), [t for t in ocr_parts if t]
+
+
+def try_guess_image_from_bin(bin_bytes: bytes) -> bytes:
+    """HWP OLE BinData 스트림에서 PNG/JPEG 시그니처를 찾아 잘라내기"""
+    if not bin_bytes:
+        return b""
+    sigs = [b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff"]  # PNG/JPEG
+    for sig in sigs:
+        idx = bin_bytes.find(sig)
+        if idx != -1:
+            return bin_bytes[idx:]
+    return b""
+
+def extract_from_hwp_images_only(raw: bytes) -> Tuple[str, List[str]]:
+    """
+    HWP (OLE Compound)에서 BinData류 스트림만 뒤져서 이미지 OCR.
+    본문 텍스트는 별도 파서(hwp5txt)가 없으면 생략.
+    """
+    ocr_parts = []
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".hwp") as tmp:
+        tmp.write(raw)
+        tmp.flush()
+        path = tmp.name
+    try:
+        if not olefile.isOleFile(path):
+            return "", []
+        with olefile.OleFileIO(path) as ole:
+            for entry in ole.listdir(streams=True, storages=True):
+                # 예: ['BinData', 'Bin0001'] 등
+                if any("Bin" in e or "BIN" in e for e in entry):
+                    try:
+                        stream = ole.openstream(entry).read()
+                        img = try_guess_image_from_bin(stream)
+                        if img:
+                            ocr_parts.append(ocr_image_bytes(img))
+                    except Exception as e:
+                        print("hwp bin read err:", e)
+    finally:
+        try:
+            os.remove(path)
+        except:
+            pass
+    return "", [t for t in ocr_parts if t]
+
+def extract_text_from_hwp_hwp5txt(raw: bytes) -> str:
+    """
+    (선택) hwp5txt CLI가 설치된 환경에서 HWP 본문 텍스트까지 추출.
+    설치가 안돼 있으면 빈 문자열 반환.
+    """
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".hwp") as tmp:
+        tmp.write(raw)
+        tmp.flush()
+        path = tmp.name
+    try:
+        # hwp5txt 가 PATH 에 있어야 함 (리눅스 환경 권장)
+        out = subprocess.check_output(
+            ["hwp5txt", path], encoding="utf-8", errors="ignore")
+        return out.strip()
+    except Exception as e:
+        print("hwp5txt not available or failed:", e)
+        return ""
+    finally:
+        try:
+            os.remove(path)
+        except:
+            pass
+
+def extract_from_hwpx_zip(raw: bytes) -> Tuple[str, List[str]]:
+    import zipfile
+    import io
+    text_parts, ocr_parts = [], []
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+            for name in zf.namelist():
+                low = name.lower()
+                # HWPX는 주로 Contents/Resources/… 경로에 이미지가 있음
+                if ("/resources/" in low or low.startswith("contents/")) and low.split(".")[-1] in (
+                    "png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp"
+                ):
+                    ocr_parts.append(ocr_image_bytes(zf.read(name)))
+            # (원하면 여기서 XML 텍스트도 추가 파싱)
+    except Exception as e:
+        print("hwpx zip scan err:", e)
+    return "\n".join(text_parts).strip(), [t for t in ocr_parts if t]
+# ---------------------------
+# 메인 디스패처
+# ---------------------------
+def extract_all_text_and_images(binary: bytes, filename: str) -> str:
+    """
+    파일 확장자에 따라 본문 텍스트 + 내장 이미지 OCR을 합쳐 하나의 문자열로 반환.
+    프론트 수정 없이 `text` 하나로 내려주기 위함.
+    """
+    ext = (filename or "").lower().split(".")[-1]
+    body, ocr_list = "", []
+
+    try:
+        if ext in ["png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp"]:
+            body, ocr_list = extract_from_image(binary)
+
+        elif ext == "pdf":
+            body, ocr_list = extract_from_pdf(binary)
+
+        elif ext == "docx":
+            body, ocr_list = extract_from_docx(binary)
+
+        elif ext in ["pptx", "ppt"]:
+            body, ocr_list = extract_from_pptx(binary)
+
+        elif ext in ["xlsx", "xls"]:
+            body, ocr_list = extract_from_xlsx(binary)
+
+        elif ext == "txt":
+            body, _ = extract_from_txt(binary)
+
+        elif ext == "hwpx":
+            body, ocr_list = extract_from_hwpx_zip(binary)
+
+        elif ext == "hwp":
+            # 1) (가능하면) hwp5txt 로 본문 추출
+            body = extract_text_from_hwp_hwp5txt(binary)
+            # 2) BinData 이미지 OCR 도 병행
+            _, ocr_list = extract_from_hwp_images_only(binary)
+
+        else:
+            # 모르는 포맷: 일단 텍스트처럼 디코드 시도
+            body = detect_text_encoding_and_decode(binary)
+
+    except Exception as e:
+        # 개별 파서 실패 시에도 가능한 정보 반환
+        print("parse error:", type(e).__name__, e)
+
+    # 최종 합치기 (프론트 변경 없이 text 하나로 반환)
+    body = (body or "").strip()
+    ocr_text = "\n\n".join([t for t in (ocr_list or []) if t]).strip()
+
+    if body and ocr_text:
+        return f"{body}\n\n{ocr_text}"
+    elif ocr_text:
+        return ocr_text
+    else:
+        return body
+
 
 load_dotenv()
 
 app = FastAPI()
-
-os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
-os.environ.pop("VISION_KEY_PATH", None)
 
 ALLOW_ORIGINS = [
     "http://127.0.0.1:5500",
@@ -908,40 +1187,85 @@ async def cohere_honorific(request: Request):
 
 @app.post("/cohereInformal")
 async def cohere_informal(payload: InformalInput):
+    import re
     co = cohere.ClientV2(COHERE_API_KEY)
 
-    # 'hada' | 'haetda' | 'hae' | ''
+    # 0) 입력
+    src = (payload.content or "").strip()
+    if not src:
+        return {"error": "content가 비었습니다."}
+
+    # 1) 엔딩 옵션
     ending = (payload.ending or "").strip().lower()
-
     ending_rules = {
-        "hada": (
-            "모든 문장을 '~다'로 끝나는 평서형(…한다/…이다)으로 써줘. "
-            "구어체/해요체/존칭 표현은 쓰지 말 것."
-        ),
-        "haetda": (
-            "모든 문장을 과거 평서형 '~했다/~였다'로 써줘. "
-            "구어체/해요체/존칭 표현은 쓰지 말 것."
-        ),
-        "hae": (
-            "모든 문장을 '~해/~했어' 반말체로 써줘."
-        ),
+        "hada": "모든 문장을 '~다'로 끝나는 평서형(…한다/…이다)으로 바꿔줘. 구어체/해요체/존칭 표현은 쓰지 마.",
+        "haetda": "모든 문장을 과거 평서형 '~했다/~였다'로 바꿔줘. 구어체/해요체/존칭 표현은 쓰지 마.",
+        "hae": "모든 문장을 '~해/~했어' 반말체로 바꿔줘. 머리말이나 설명을 붙이지 마."
     }
-    # 파라미터가 없으면 기존 동작(반말 '~해/~했어')을 그대로 유지
-    instruction = ending_rules.get(ending) or ending_rules["hae"]
+    instruction = ending_rules.get(ending, ending_rules["hae"])
 
-    user_prompt = f"""{payload.content}
+    # 2) 태그+few-shot 예시: 초단문/단문에서도 본문만 나오게
+    user_prompt = f"""
+다음 규칙을 지켜서 문장을 변환해.
+- {instruction}
+- 결과는 반드시 <out>와 </out> 사이에만 작성해.
+- 설명/머리말/따옴표/불릿/코드블록/제목 금지. 오직 변환 결과만.
+- </out> 뒤에는 아무 것도 쓰지 마.
 
-{instruction}
-추가 규칙:
-- 결과는 텍스트만 반환(설명/머리말/따옴표 금지).
-"""
+[예시]
+<in>안녕하세요</in>
+<out>안녕</out>
 
-    response = co.chat(
+<in>감사합니다</in>
+<out>고마워</out>
+
+<in>죄송합니다</in>
+<out>미안해</out>
+
+<in>네</in>
+<out>응</out>
+
+[변환할 문장]
+<in>{src}</in>
+
+[출력]
+<out>"""
+
+    resp = co.chat(
         model="command-a-03-2025",
-        messages=[{"role": "user", "content": user_prompt}]
+        messages=[
+            {"role": "system", "content": "너는 한국어 문체 변환기야. 오직 결과만 출력해."},
+            {"role": "user", "content": user_prompt}
+        ],
+        stop_sequences=["</out>"]  # 태그 닫히면 즉시 중단
     )
-    full_text = response.message.content[0].text
-    return {"result": full_text}
+
+    raw = (resp.message.content[0].text or "").strip()
+
+    # 3) 파싱: <out> ... </out> (</out>은 stop으로 잘렸을 수 있음)
+    m = re.search(r"<out>([\s\S]*?)$", raw)
+    out = (m.group(1) if m else raw).strip()
+
+    # 4) 서버측 살균기: 머리말/메타 라인/코드펜스/따옴표 제거
+    def sanitize(s: str) -> str:
+        # 코드펜스
+        s = re.sub(r"^```[\s\S]*?```$", "", s, flags=re.MULTILINE).strip()
+        # 양끝 따옴표
+        if len(s) >= 2 and s[0] in "'\"" and s[-1] == s[0]:
+            s = s[1:-1].strip()
+        # 흔한 메타 헤더 라인 제거
+        ban_prefix = r"(답변이|반말|높임말|알겠어|설명|지시|출력|예시|머리말)"
+        lines = [ln for ln in s.splitlines()
+                 if not re.match(rf"^\s*{ban_prefix}\b", ln)]
+        s = "\n".join(lines).strip()
+        # 남은 줄에서 헤더 비슷한 것(짧은 한 단어) 제거
+        lines = [ln for ln in s.splitlines() if not re.fullmatch(
+            r"\s*[가-힣A-Za-z]{1,6}\s*", ln)]
+        s = "\n".join(lines).strip()
+        return s
+
+    out = sanitize(out)
+    return {"result": out, "ending": ending or "hae"}
 
 
 @app.post("/translate")
@@ -1127,10 +1451,11 @@ def extract_text_by_ext(local_path: str, filename: str) -> str:
 @app.post("/fileScan")
 async def file_scan(file: UploadFile = File(...)):
     """
-    하나의 업로드 엔드포인트로 다양한 문서 포맷을 받아 텍스트만 반환.
-    클라이언트: FormData에 'file' 필드로 업로드 (script.js의 extractTextFromAnyFile).
+    하나의 업로드 엔드포인트로:
+    - 모든 문서 포맷의 본문 텍스트 추출
+    - 문서 내 '삽입 이미지'들 OCR 결과까지 병합
+    반환: {"filename", "text"}  (프론트 수정 불필요)
     """
-    # 임시 저장
     suffix = pathlib.Path(file.filename).suffix
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         binary = await file.read()
@@ -1138,13 +1463,13 @@ async def file_scan(file: UploadFile = File(...)):
         tmp_path = tmp.name
 
     try:
-        text = extract_text_by_ext(tmp_path, file.filename)
+        merged = extract_all_text_and_images(binary, file.filename)
 
         MAX_CHARS = 100_000
-        if len(text) > MAX_CHARS:
-            text = text[:MAX_CHARS]
+        if len(merged) > MAX_CHARS:
+            merged = merged[:MAX_CHARS]
 
-        return {"filename": file.filename, "text": text}
+        return {"filename": file.filename, "text": merged}
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
     finally:
