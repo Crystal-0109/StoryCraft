@@ -3,28 +3,33 @@
 }
 .page-button {
     display: flex;
-    justify-content: flex-start; /* 왼쪽 정렬 */
+    justify-content: flex-start; /* 정렬 */
     align-items: center; /* 수직 중앙 정렬 (선택사항) */
     position: relative;
     gap: 3px;
 }
+
 .page-inputResult {
     display: flex;
-    justify-content: space-between; /* 좌우 요소 띄우기 */
-    margin-bottom: 10px;
+    align-items: flex-start; /* 입력창 상단 고정 */
+    gap: 24px;
+    position: relative;
 }
+
 .page-arrow {
+    flex: 0 0 28px;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-right: 8px;
+    margin-top: 0;
 }
-.arrow {
-    width: 0.8rem;
-    height: 0.8rem;
-    border-top: 0.1rem solid #3b4ef8;
-    border-right: 0.1rem solid #3b4ef8;
-    transform: rotate(45deg);
+
+.page-arrow .arrow {
+    width: 10px;
+    height: 10px;
+    border-right: 3px solid #8a7cff;
+    border-bottom: 3px solid #8a7cff;
+    transform: rotate(-45deg);
 }
 /* 버튼 두 개를 자연스럽게 나란히 배치 */
 #startRecord,
@@ -5632,4 +5637,32 @@ main.page-wrap {
 .page-inputResult.single .result-wrap {
     flex: 1 1 100%;
     width: 100%;
+}
+
+.page-inputResult .right,
+.page-inputResult .result-wrap,
+#resultArea {
+    display: block !important;
+    align-self: stretch !important;
+}
+
+.page-inputResult .right,
+.page-inputResult .result-wrap {
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+}
+
+#resultArea p {
+    margin-top: 0;
+}
+
+/* 결과 패널은 항상 상단 정렬 */
+.page-inputResult .result-wrap {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+}
+
+#resultArea {
+    display: block !important;
+    align-self: stretch !important;
 }
