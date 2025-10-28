@@ -3874,10 +3874,12 @@ async function editorInsertRecording() {
 }
 
 async function sendPromptChange() {
+    spin(true);
     const promptEl = document.getElementById('promptText');
     const prompt = (promptEl?.value ?? '').trim();
     if (!prompt) {
         alert('프롬프트를 입력하세요.');
+        spin(false);
         return;
     }
 
@@ -3941,7 +3943,7 @@ async function sendPromptChange() {
     ];
     const hasWord = words.some((w) => prompt.includes(w));
 
-    showSpin?.(true);
+    // showSpin?.(true);
     try {
         if (hasWord) {
             // 커서 앞뒤만 서버에 넘기고, 결과를 커서 위치에 삽입
@@ -3980,7 +3982,8 @@ async function sendPromptChange() {
     } catch (e) {
         alert('프롬프트 처리 실패: ' + (e?.message || e));
     } finally {
-        showSpin?.(false);
+        // showSpin?.(false);
+        spin(false);
     }
 }
 
@@ -4022,9 +4025,10 @@ async function imagePromptChange() {
 
     if (!content) {
         alert('내용을 입력하세요.');
+        spin(false);
         return;
     }
-    // spin(true);
+    spin(true);
     if (hasWord) {
         try {
             const response = await fetch(`${BASE_URL}/promptAdd`, {
@@ -4049,7 +4053,7 @@ async function imagePromptChange() {
         } catch {
             alert('프롬프트 추가 실패: ' + e.message);
         } finally {
-            // spin(false);
+            spin(false);
             console.log('텍스트 추출 프롬프트 적용 완료');
         }
     } else {
@@ -4071,7 +4075,7 @@ async function imagePromptChange() {
         } catch (e) {
             alert('프롬프트 수정 실패: ' + e.message);
         } finally {
-            showSpin(false);
+            spin(false);
         }
     }
 }
@@ -7233,6 +7237,7 @@ menu.addEventListener('click', async (e) => {
     switch (action) {
         case 'summary':
             console.log('요약 기능 실행');
+            spin(true);
 
             try {
                 const data = await postJSON(`${BASE_URL}/summary`, {
@@ -7252,10 +7257,12 @@ menu.addEventListener('click', async (e) => {
                 alert('요약 실패: ' + e.message);
             } finally {
                 console.log('텍스트 추출 모달에서 요약 완료');
+                spin(false);
             }
             break;
         case 'expand':
             console.log('확장 기능 실행');
+            spin(true);
 
             try {
                 const data = await postJSON(`${BASE_URL}/expand`, {
@@ -7275,10 +7282,12 @@ menu.addEventListener('click', async (e) => {
                 alert('확장 실패: ' + e.message);
             } finally {
                 console.log('텍스트 추출 모달에서 확장 완료');
+                spin(false);
             }
             break;
         case 'rewrite':
             console.log('재작성 실행');
+            spin(true);
 
             try {
                 const data = await postJSON(`${BASE_URL}/mistralRewrite`, {
@@ -7299,10 +7308,13 @@ menu.addEventListener('click', async (e) => {
                 alert('재작성 실패: ' + e.message);
             } finally {
                 console.log('텍스트 추출 모달에서 재작성 완료');
+                spin(false);
             }
             break;
         case 'honorific':
             console.log('높임말 실행');
+            spin(true);
+
             try {
                 const data = await postJSON(`${BASE_URL}/cohereHonorific`, {
                     content,
@@ -7321,10 +7333,13 @@ menu.addEventListener('click', async (e) => {
                 alert('높임말 변환 실패: ' + e.message);
             } finally {
                 console.log('텍스트 추출 모달에서 높임말 완료');
+                spin(false);
             }
             break;
         case 'informal':
             console.log('반말 실행');
+            spin(true);
+
             try {
                 const data = await postJSON(`${BASE_URL}/cohereInformal`, {
                     content,
@@ -7343,10 +7358,13 @@ menu.addEventListener('click', async (e) => {
                 alert('반말 변환 실패: ' + e.message);
             } finally {
                 console.log('텍스트 추출 모달에서 반말 완료');
+                spin(false);
             }
             break;
         case 'grammar':
             console.log('문법 교정 실행');
+            spin(true);
+
             if (content.length >= 300) {
                 alert(
                     '글자 수가 300자를 초과했습니다. 300자 미만으로 써주십시오.'
@@ -7372,6 +7390,7 @@ menu.addEventListener('click', async (e) => {
                 alert('문법 교정 실패: ' + e.message);
             } finally {
                 console.log('텍스트 추출 모달에서 문법 교정 완료');
+                spin(false);
             }
             break;
     }
@@ -7413,6 +7432,7 @@ styleSubmenu.addEventListener('click', async (e) => {
     const subaction = e.target.dataset.subaction;
     if (!subaction) return;
     console.log(`문체 변경 → ${subaction} 실행`);
+    spin(true);
     const { text, apply } = getQuillSelectionOrAll2();
     const content = (text || '').trim();
 
@@ -7444,6 +7464,7 @@ styleSubmenu.addEventListener('click', async (e) => {
     } finally {
         menu.hidden = true;
         styleSubmenu.hidden = true;
+        spin(false);
     }
 });
 
@@ -7455,6 +7476,7 @@ translateSubmenu.addEventListener('click', async (e) => {
     const { text, apply } = getQuillSelectionOrAll2();
     const content = (text || '').trim();
     if (!content) return alert('내용을 입력하세요.');
+    spin(true);
 
     try {
         const data = await postJSON(`${BASE_URL}/translate`, {
@@ -7477,6 +7499,7 @@ translateSubmenu.addEventListener('click', async (e) => {
     } finally {
         menu.hidden = true;
         translateSubmenu.hidden = true;
+        spin(false);
     }
 });
 
