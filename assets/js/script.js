@@ -6622,10 +6622,10 @@ async function imagePromptChange() {
 
                 // 모드 & 옵션
                 const modeWrap = $('#exModeWrap');
-                const lenLevelSel = $('#exLenLevel'); // 'low' | 'medium' | 'high' | (xhigh)
-                const nSent = $('#exSentences'); // 숫자 (1~50)
+                const lenLevelSel = $('#exLenLevel'); // 'low' | 'medium' | 'high' | 'xhigh'
+                const nSent = $('#exSentences'); // 1~50
 
-                // 길이 레벨 → % 매핑 (백엔드 호환)
+                // 길이 레벨
                 const LEN_PRESET = {
                     low: 20,
                     medium: 50,
@@ -6633,10 +6633,9 @@ async function imagePromptChange() {
                     xhigh: 100,
                 };
 
-                let last = null; // { out, scope, rangeSnap, first }
+                let last = null;
 
-                // 선택 길이 메타
-
+                // 선택 길이
                 function updateSelectionMeta() {
                     try {
                         const q = window.quill;
@@ -6657,7 +6656,6 @@ async function imagePromptChange() {
                     window.quill.on('text-change', updateSelectionMeta);
                 }
 
-                // 범위 라디오
                 function currentScope() {
                     const r = document.querySelector(
                         '#scDrawer input[name="exScope"]:checked'
@@ -6666,51 +6664,57 @@ async function imagePromptChange() {
                 }
                 function syncCustomWrap() {
                     const show = currentScope() === 'input';
-                    wrapCustom.hidden = !show;
+                    if (wrapCustom) wrapCustom.hidden = !show;
                     if (show) setTimeout(() => inputCustom?.focus(), 0);
                 }
                 document
                     .querySelectorAll('#scDrawer input[name="exScope"]')
-                    .forEach((r) => {
-                        r.addEventListener('change', syncCustomWrap);
-                    });
+                    .forEach((r) =>
+                        r.addEventListener('change', syncCustomWrap)
+                    );
                 syncCustomWrap();
 
-                // 모드 라디오
                 function currentMode() {
                     const r = document.querySelector(
                         '#scDrawer input[name="exMode"]:checked'
                     );
                     return r ? r.value : 'length';
                 }
+                function setHiddenSafe(el, v) {
+                    if (el) el.hidden = !!v;
+                }
                 function syncExCtrls() {
                     if (!drawer) return;
                     const mode = currentMode && currentMode();
                     if (!mode) return;
+
                     const lenCtrls =
                         drawer.querySelectorAll?.('.ex-ctrl--length') || [];
                     const sentCtrls =
                         drawer.querySelectorAll?.('.ex-ctrl--sentences') || [];
-                    [...lenCtrls].forEach((el) =>
+
+                    lenCtrls.forEach((el) =>
                         setHiddenSafe(el, mode !== 'length')
                     );
-                    [...sentCtrls].forEach((el) =>
+                    sentCtrls.forEach((el) =>
                         setHiddenSafe(el, mode !== 'sentences')
                     );
                 }
                 if (modeWrap) modeWrap.addEventListener('change', syncExCtrls);
-                document.addEventListener('DOMContentLoaded', syncExCtrls);
 
-                // 실행
+                syncExCtrls();
+
                 btnRun?.addEventListener('click', async () => {
                     const scope = currentScope();
                     const mode = currentMode();
                     const q = window.quill;
                     const area = $('#exResult');
+
                     if (area) createInlineSpinner(area, '확장 중…');
 
                     let text = '';
                     let range = null;
+                    let insertPos = null;
 
                     if (scope === 'doc') {
                         text = q
@@ -6721,6 +6725,8 @@ async function imagePromptChange() {
                             if (area) area.textContent = '문서가 비어 있어요.';
                             return;
                         }
+
+                        insertPos = q ? q.getLength() - 1 : 0;
                     } else if (scope === 'sel') {
                         if (!q) {
                             if (area) removeInlineSpinner(area);
@@ -6730,13 +6736,14 @@ async function imagePromptChange() {
                         const sel = q.getSelection();
                         if (!sel || sel.length === 0) {
                             if (area) removeInlineSpinner(area);
-                            if (area) removeInlineSpinner(area);
                             if (area)
                                 area.textContent = '선택된 내용이 없어요.';
                             return;
                         }
                         text = q.getText(sel.index, sel.length);
-                        range = sel; // 첫 1회 적용에만 쓰는 스냅샷
+                        range = sel;
+                        // 선택 뒤에 추가
+                        insertPos = sel.index + sel.length;
                     } else {
                         text = (inputCustom?.value || '').trim();
                         if (!text) {
@@ -6746,44 +6753,137 @@ async function imagePromptChange() {
                                     '확장할 텍스트를 입력해 주세요.';
                             return;
                         }
+
+                        insertPos = null;
                     }
-
-                    // 페이로드: 선택된 모드의 필드만 전송(배타적)
-                    const payload = { content: text, mode };
-
-                    if (mode === 'length') {
-                        const levelKey = lenLevelSel?.value || 'medium';
-                        payload.length_level = levelKey;
-                    } else {
-                        // sentences 모드
-                        const addN = Math.max(
-                            1,
-                            Math.min(50, parseInt(nSent?.value || '1', 10))
-                        );
-                        payload.add_sentences = addN;
-                        // 길이 증가는 아예 보내지 않음
-                    }
-
-                    btnApply.disabled = btnCopy.disabled = true;
 
                     try {
-                        const r = await postJSON(`${BASE_URL}/expand`, payload);
-                        const out = (r?.result || r?.text || '')
-                            .toString()
-                            .trim();
-                        if (!out) {
+                        if (mode === 'length') {
+                            const levelKey = lenLevelSel?.value || 'medium';
+                            const payload = {
+                                content: text,
+                                mode: 'length',
+                                length_level: levelKey,
+                            };
+                            const r = await postJSON(
+                                `${BASE_URL}/expand`,
+                                payload
+                            );
+                            const out = (r?.result || r?.text || '')
+                                .toString()
+                                .trim();
+                            if (!out) {
+                                if (area) removeInlineSpinner(area);
+                                if (area) area.textContent = '빈 결과입니다.';
+                                return;
+                            }
+
                             if (area) removeInlineSpinner(area);
-                            if (area) area.textContent = '빈 결과입니다.';
-                            return;
+                            if (area) area.textContent = out;
+
+                            // 적용/복사
+                            if (btnApply)
+                                btnApply.disabled = !(out && out.length);
+                            if (btnCopy)
+                                btnCopy.disabled = !(out && out.length);
+                        } else {
+                            const addN = Math.max(
+                                1,
+                                Math.min(50, parseInt(nSent?.value || '1', 10))
+                            );
+
+                            let before = '';
+                            let after = '';
+                            if (scope === 'input') {
+                                before = text;
+                                after = '';
+                            } else if (q) {
+                                const pos = Number.isFinite(insertPos)
+                                    ? insertPos
+                                    : q.getSelection(true)?.index ??
+                                      q.getLength() - 1;
+                                before = q.getText(0, pos);
+
+                                const tailLen = Math.max(
+                                    0,
+                                    q.getLength() - 1 - pos
+                                );
+                                after = q.getText(pos, tailLen);
+                            }
+
+                            const r = await postJSON(`${BASE_URL}/promptAdd`, {
+                                before,
+                                after,
+                                prompt: `이 위치에 ${addN}문장을 자연스럽게 덧붙여 주세요.`,
+                            });
+
+                            const onlyAdded = (r?.result || r?.text || '')
+                                .toString()
+                                .trim();
+                            if (!onlyAdded) {
+                                if (area) removeInlineSpinner(area);
+                                if (area) area.textContent = '빈 결과입니다.';
+                                return;
+                            }
+
+                            if (area) removeInlineSpinner(area);
+                            if (area) area.textContent = onlyAdded;
+
+                            if (btnApply) btnApply.disabled = false;
+                            if (btnCopy) btnCopy.disabled = false;
+
+                            btnApply &&
+                                (btnApply.onclick = () => {
+                                    try {
+                                        const qq = window.quill;
+                                        if (!qq) return;
+                                        let pos;
+                                        if (scope === 'doc') {
+                                            pos = qq.getLength() - 1;
+                                        } else if (scope === 'sel') {
+                                            pos = range
+                                                ? range.index + range.length
+                                                : qq.getSelection(true)
+                                                      ?.index ??
+                                                  qq.getLength() - 1;
+                                        } else {
+                                            return;
+                                        }
+                                        const attrs = qq.getFormat(
+                                            Math.max(0, pos - 1),
+                                            1
+                                        );
+                                        qq.insertText(
+                                            pos,
+                                            onlyAdded,
+                                            attrs,
+                                            'user'
+                                        );
+                                        qq.setSelection(
+                                            pos + onlyAdded.length,
+                                            0,
+                                            'silent'
+                                        );
+                                    } catch {}
+                                });
                         }
 
-                        if (area) removeInlineSpinner(area);
-                        if (area) area.textContent = out;
-                        btnApply.disabled = btnCopy.disabled = !(
-                            out && out.length
-                        );
+                        // 복사
+                        btnCopy &&
+                            (btnCopy.onclick = async () => {
+                                try {
+                                    const txt =
+                                        $('#exResult')?.textContent || '';
+                                    await navigator.clipboard?.writeText(txt);
+                                    const b = btnCopy;
+                                    b.textContent = '복사됨';
+                                    setTimeout(
+                                        () => (b.textContent = '복사'),
+                                        1200
+                                    );
+                                } catch {}
+                            });
 
-                        // 직접 입력이면 결과로 스크롤
                         if (scope === 'input') {
                             document
                                 .getElementById('exResult')
@@ -6793,74 +6893,18 @@ async function imagePromptChange() {
                                 });
                         }
 
-                        // 첫 1회만 range 스냅샷 사용, 이후엔 현재 드래그/커서 기준
                         last = {
-                            out,
+                            out: $('#exResult')?.textContent || '',
                             scope,
-                            rangeSnap: range || null,
+                            rangeSnap: range,
                             first: true,
                         };
-                    } catch (e) {
+                    } catch (err) {
                         if (area) removeInlineSpinner(area);
                         if (area)
-                            area.textContent =
-                                '확장 실패: ' + (e?.message || e);
+                            area.textContent = '요청 중 오류가 발생했습니다.';
+                        console.error(err);
                     }
-                });
-
-                // 적용: 첫 클릭만 스냅샷 → 이후 현재 드래그/커서 기준
-                btnApply?.addEventListener('click', () => {
-                    if (!last?.out) return;
-                    const q = window.quill;
-                    if (!q) return;
-
-                    const docLen = Math.max(0, q.getLength() - 1);
-
-                    if (last.scope === 'doc' && last.first) {
-                        q.setText(last.out);
-                        q.setSelection(
-                            Math.max(0, last.out.length - 1),
-                            0,
-                            'silent'
-                        );
-                        last.first = false;
-                        last.rangeSnap = null;
-                        return;
-                    }
-
-                    const liveSel = q.getSelection(true);
-                    const sel =
-                        last.first && last.rangeSnap
-                            ? last.rangeSnap
-                            : liveSel || { index: docLen, length: 0 };
-
-                    if (sel.length > 0) {
-                        q.deleteText(sel.index, sel.length, 'user');
-                        q.insertText(sel.index, last.out, 'user');
-                        q.setSelection(
-                            sel.index + last.out.length,
-                            0,
-                            'silent'
-                        );
-                    } else {
-                        const pos =
-                            typeof sel.index === 'number' ? sel.index : docLen;
-                        q.insertText(pos, last.out, 'user');
-                        q.setSelection(pos + last.out.length, 0, 'silent');
-                    }
-
-                    last.first = false;
-                    last.rangeSnap = null;
-                });
-
-                // 복사
-                btnCopy?.addEventListener('click', async () => {
-                    const txt = ($('#exResult')?.textContent || '').trim();
-                    if (!txt) return;
-                    await navigator.clipboard.writeText(txt);
-                    const b = btnCopy;
-                    b.textContent = '복사됨';
-                    setTimeout(() => (b.textContent = '복사'), 1200);
                 });
 
                 break;
