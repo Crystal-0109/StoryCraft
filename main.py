@@ -1062,103 +1062,6 @@ async def mistral_grammar(content: TextInput):
 
     return {"result": message}
 
-
-# @app.post("/mistralGrammar2")
-# async def mistral_grammar2(content: TextInput):
-#     start_time = time.perf_counter()  # 처리 시작 시점
-#     # 문장 분리 (마침표, 느낌표, 물음표 등으로 분리)
-#     sentences = split_sentences(content.content)
-#     n = len(sentences)  # 문장 개수(배열 행 개수)
-#     print(n)
-
-#     # 앞뒤 공백 제거
-#     sentences = [s.strip() for s in sentences if s.strip()]
-
-#     # n행 3열 배열 생성: 첫 열에 문장, 나머지 두 열은 빈 문자열 (원문, 교정문, 미스트랄 결과)
-#     array = [[sentence, "", ""] for sentence in sentences]
-#     for row in array:
-#         print(row)
-
-#     # T5 모델 로드
-#     model = T5ForConditionalGeneration.from_pretrained(
-#         "j5ng/et5-typos-corrector")
-#     tokenizer = T5Tokenizer.from_pretrained("j5ng/et5-typos-corrector")
-
-#     device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-#     model = model.to(device)
-
-#     for i in range(n):
-#         # 예시 입력 문장
-#         input_text = array[i][0]
-
-#         # 입력 문장 인코딩
-#         input_encoding = tokenizer(
-#             "맞춤법을 고쳐주세요: " + input_text, return_tensors="pt")
-
-#         input_ids = input_encoding.input_ids.to(device)
-#         attention_mask = input_encoding.attention_mask.to(device)
-
-#         # T5 모델 출력 생성
-#         output_encoding = model.generate(
-#             input_ids=input_ids,
-#             attention_mask=attention_mask,
-#             max_length=128,
-#             num_beams=5,
-#             early_stopping=True,
-#         )
-
-#         # 출력 문장 디코딩
-#         output_text = tokenizer.decode(
-#             output_encoding[0], skip_special_tokens=True)
-
-#         array[i][1] = output_text
-
-#     # 역순으로 인덱스를 돌면서 맞춤법이 틀린 게 없는 문장 삭제
-#     for i in reversed(range(len(array))):
-#         if array[i][0] == array[i][1]:
-#             del array[i]
-
-#     for row in array:
-#         print(row)
-
-#     for i in range(len(array)):
-#         mistral_input_text = f"1. {array[i][0]}\n2. {array[i][1]}"
-
-#         headers = {
-#             "Authorization": f"Bearer {MISTRAL_API_KEY_S}",
-#             "Content-Type": "application/json"
-#         }
-#         payload = {
-#             "agent_id": AGENT_ID_GRAMMAR2,
-#             "messages": [
-#                 {"role": "user", "content": mistral_input_text}
-#             ]
-#         }
-#         response = requests.post(
-#             "https://api.mistral.ai/v1/agents/completions",
-#             headers=headers,
-#             json=payload
-#         )
-
-#         if response.status_code != 200:
-#             return {"error": f"HTTP 오류: {response.status_code}", "detail": response.text}
-
-#         result = response.json()
-
-#         try:
-#             message = result["choices"][0]["message"]["content"]
-#             array[i][2] = message  # 응답 결과
-#             print(array[i][2])
-#         except (KeyError, IndexError) as e:
-#             return {"error": "응답 파싱 오류", "detail": str(e), "raw_response": result}
-
-#     end_time = time.perf_counter()
-#     elapsed_time = end_time - start_time
-#     print(f"[총 처리 시간] {elapsed_time:.2f}초")
-
-#     return {"result": array, "arrayLen": len(array)}
-
 def split_sentences(text):
     text = text.strip()
     if not text:
@@ -1636,13 +1539,40 @@ async def editorGrammar(content: TextInput):
     print(f"검사 시간   : {result.time:.4f}초")
     print("-" * 40)
 
+    headers = {
+        "Authorization": f"Bearer {MISTRAL_API_KEY_S}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "agent_id": AGENT_ID_GRAMMAR2,
+        "messages": [
+            {"role": "user", "content": result.checked}
+        ]
+    }
+    response = requests.post(
+        "https://api.mistral.ai/v1/agents/completions",
+        headers=headers,
+        json=payload
+    )
+    if response.status_code != 200:
+        return {"error": f"HTTP 오류: {response.status_code}", "detail": response.text}
+
+    text = response.json()
+
+    try:
+        message = text["choices"][0]["message"]["content"]
+    except (KeyError, IndexError) as e:
+        return {"error": "응답 파싱 오류", "detail": str(e), "raw_response": text}
+
     return {
         "original": result.original,
-        "checked": result.checked,
+        # "checked": result.checked,
         "errors": result.errors,
         # "words": list(result.words.keys()),
         "time": result.time,
+        "checked": message,
     }
+
 @app.post("/promptChange")
 async def expand(request: Request):
     body = await request.json()
