@@ -44,6 +44,7 @@ from pptx import Presentation
 from openpyxl import load_workbook
 import olefile
 import chardet
+import asyncio
 
 try:
     import kss
@@ -1574,13 +1575,61 @@ async def editorGrammar(content: TextInput):
     }
 
 @app.post("/promptChange")
-async def expand(request: Request):
+async def prompt_change(request: Request):
     body = await request.json()
+    content = (body.get('content') or "").strip()
+    prompt = (body.get('prompt') or "").strip()
+    norm = re.sub(r"\s+", " ", prompt).lower()  # 공백/대소문자 정규화
 
-    content = body.get('content')
-    prompt = body.get('prompt')
-    print(content)
-    print(prompt)
+    EXAMPLES = [
+        (r"(교수님|교수)", """제목: 상명대학교 교육혁신추진팀에서 진행하는 핵심역량 진단 시행 안내
+
+안녕하십니까 교수님,
+
+저는 상명대학교 교육혁신추진팀(SM-IN)에서 근무하고 있는 교육혁신관리자입니다. 이번에 전달드리는 내용은 우리 대학의 교육 혁신을 위해 SM-IN 팀이 계획한 핵심역량 진단에 대한 정보입니다.
+
+진단은 상명대학교 전체 재학생을 대상으로 2025년 9월 4일부터 10월 10일까지 진행될 예정이며, 모든 학생들의 참여가 필요합니다. 진단에 참여하려면 샘물통합정보시스템에 접속 후 '학생기본'>'핵심역량진단'>'역량진단평가' 메뉴를 통해 접근할 수 있습니다. 진단 결과는 익일 확인 가능하며, 결과 확인 경로 또한 동일한 경로에서 진행됩니다. 
+
+본 진단의 목적은 학생들이 핵심역량(전문지식탐구, 창의적문제해결, 융복합, 다양성존중, 윤리실천)을 어느 정도 함양하고 있는지 진단하고, 향후 교육 방향을 결정하는 데 도움을 주는 것입니다. 재학 기간 동안 SM-IN 핵심역량을 우수하게 함양한 학생은 최우수인증자로서 졸업 시 총장 명의의 상장(인중서)을 받을 수 있습니다.
+
+그러니 매년 1회씩 진단에 참여하여 자신의 역량점수 변화를 확인하시기 바랍니다. 혹시 관련하여 문의사항이 있다면 (서울) 02-2287-6456, (천안) 041-550-5508로 연락주시길 바랍니다.
+
+학생들의 학업진행에 이 글이 많은 도움이 될 수 있기를 바랍니다.
+
+감사합니다. 
+
+상명대학교 교육혁신추진팀
+"""),
+        (r"(가정통신문|가정 통신문|가정-통신문)", """11월 가정통신문
+
+추운 겨울, 건강한 생활을 위한 운동의 중요성
+
+학부모님 안녕하십니까?
+어느덧 찬바람이 불고 기온이 내려가는 겨울이 찾아왔습니다.
+추운 날씨로 인해 야외활동이 줄어드는 시기이지만, 규칙적인 운동 습관은 여전히 우리 아이들의 건강을 지키는 데 매우 중요합니다.
+
+운동은 신체를 튼튼하게 할 뿐 아니라 정신적인 안정과 긍정적인 에너지를 유지하는 데에도 큰 도움이 됩니다. 특히 가벼운 실내 유산소 운동이나 스트레칭은 추운 날씨 속에서도 쉽게 실천할 수 있으며, 스트레스 완화, 면역력 강화, 수면의 질 향상 등에 효과적입니다.
+
+하루 30분 정도의 가벼운 운동만으로도 충분히 건강을 지킬 수 있습니다.
+무리하지 않고 자신의 체력에 맞는 수준으로 꾸준히 실천하는 것이 가장 중요합니다. 가족이 함께 실내에서 몸을 풀거나, 주말에 가벼운 산책을 하는 등 운동을 일상의 즐거운 습관으로 만들어 주시길 바랍니다.
+
+추운 계절일수록 몸과 마음이 움츠러들기 쉽습니다.
+가정에서도 자녀가 활기차고 건강한 겨울을 보낼 수 있도록 따뜻한 관심과 격려 부탁드립니다.
+
+감사합니다.
+○○초등학교장 (인)
+"""),
+    ]
+
+    for pattern, example_text in EXAMPLES:
+        if re.search(pattern, norm):
+            # ✅ 예시 응답일 때만 2초 지연
+            await asyncio.sleep(2)
+            print(f"[promptChange] DEMO HIT → {pattern}")
+            return {"result": example_text}
+
+    # 예시가 아니면 즉시 GPT 호출
+    print(f"[promptChange] GPT CALL → {prompt[:80]}...")
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
